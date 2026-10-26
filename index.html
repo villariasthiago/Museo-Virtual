@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Sala Virtual de Paleontología</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Sala de museo en realidad virtual con fósiles 3D de la Facultad de Ciencias Exactas y Naturales, UNLPam. Se recorre con el celular dentro de anteojos tipo Cardboard.">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0D1412">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Concepto: una sala oscura de paredes verde piedra, donde cada fósil queda solo bajo su reflector.
+   Interfaz mínima, del mismo sistema que la web del museo (verde agua sobre negro verdoso). */
+:root{
+  color-scheme:dark;
+  --bg:#0D1412;--surface:#16211E;--ink:#E6EEEA;--ink-2:#94A59E;--line:#27352F;
+  --accent:#52C7AF;--accent-ink:#06201A;--amb:#E2AE55;
+  --f-display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;padding-block:0;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background:var(--bg);color:var(--ink);font:500 15px/1.4 var(--f-display);overflow:hidden;-webkit-text-size-adjust:100%}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit}
+#app{position:fixed;inset:0;background:var(--bg)}
+#app a-scene{display:block;width:100%;height:100%}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* Interfaz sobre la escena */
+.ui{position:fixed;z-index:20}
+#brand{top:calc(12px + env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));display:grid;gap:2px;pointer-events:none;text-shadow:0 1px 8px rgba(0,0,0,.7)}
+#brand small{font:500 11px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2)}
+#brand b{font:700 17px/1.1 var(--f-display);letter-spacing:-.01em}
+#ayuda{top:calc(12px + env(safe-area-inset-top,0px));right:max(16px,env(safe-area-inset-right,0px));max-width:min(46ch,52vw);margin:0;text-align:right;font:400 12px/1.5 var(--f-mono);color:var(--ink-2);pointer-events:none;text-shadow:0 1px 8px rgba(0,0,0,.8)}
+#bar{left:max(16px,env(safe-area-inset-left,0px));right:calc(max(16px,env(safe-area-inset-right,0px)) + 76px);bottom:calc(14px + env(safe-area-inset-bottom,0px));display:flex;flex-wrap:wrap;gap:8px;pointer-events:none}
+#bar>*{pointer-events:auto}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 16px;font:600 15px var(--f-display);color:var(--accent-ink);background:var(--accent);border:1px solid var(--accent);border-radius:3px;cursor:pointer}
+.btn:hover{filter:brightness(1.08)}
+.btn.sec{color:var(--ink);background:rgba(13,20,18,.78);border-color:var(--ink-2)}
+.btn.sec:hover{border-color:var(--ink);filter:none}
+#btn-exit{display:none;left:50%;translate:-50% 0;bottom:calc(10px + env(safe-area-inset-bottom,0px));min-height:40px;padding:8px 14px;font-size:13px}
+body.stereo #btn-exit{display:inline-flex}
+body.stereo #brand,body.stereo #ayuda,body.stereo #bar{display:none}
+
+/* Carga */
+#loader{position:fixed;inset:0;z-index:40;display:grid;place-content:center;justify-items:center;gap:14px;padding:24px;background:var(--bg);text-align:center;transition:opacity .5s}
+#loader.done{opacity:0;pointer-events:none}
+#loader h1{margin:0;font:700 clamp(26px,6vw,44px)/1.05 var(--f-display);letter-spacing:-.02em;text-wrap:balance}
+#loader .k{font:500 12px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2)}
+#loader-msg{margin:0;max-width:44ch;color:var(--ink-2);font:400 13px/1.5 var(--f-mono)}
+#loader-bar{width:min(320px,70vw);height:3px;background:var(--line)}
+#loader-bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
+
+/* Avisos */
+#toast{position:fixed;z-index:35;left:50%;top:calc(64px + env(safe-area-inset-top,0px));translate:-50% 0;max-width:min(560px,calc(100vw - 32px));padding:12px 16px;background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--amb);font:400 13px/1.5 var(--f-mono);color:var(--ink);opacity:0;pointer-events:none;transition:opacity .25s}
+#toast.on{opacity:1}
+#vrhint{position:fixed;inset:0;z-index:30;display:none;grid-template-columns:1fr 1fr;pointer-events:none}
+#vrhint.on{display:grid}
+#vrhint div{display:grid;place-content:center;gap:6px;padding:0 9%;text-align:center;background:rgba(13,20,18,.86);font:600 clamp(14px,3.4vw,24px)/1.25 var(--f-display)}
+#vrhint small{font:400 clamp(11px,2.2vw,15px)/1.4 var(--f-mono);color:var(--ink-2)}
+
+@media (max-width:620px){#ayuda{display:none}}
+@media (prefers-reduced-motion:reduce){#loader,#toast{transition:none}}
+</style>
+</head>
+<body>
+<script src="https://cdn.jsdelivr.net/npm/aframe@1.5.0/dist/aframe.min.js"></script>
+
+<div id="app">
+  <a-scene id="scene" embedded loading-screen="enabled: false" background="color: #0b1110" renderer="antialias: true" vr-mode-ui="enabled: true" device-orientation-permission-ui="enabled: true">
+    <a-entity id="rig" position="0 0 0">
+      <a-entity id="cam" camera="fov: 78; near: 0.05; far: 80" look-controls="pointerLockEnabled: false" position="0 1.6 0">
+        <a-entity id="gaze" position="0 0 -1.1" visible="false"
+          cursor="fuse: true; fuseTimeout: 1400"
+          raycaster="objects: .clickable; far: 30; interval: 60; enabled: false"
+          geometry="primitive: ring; radiusInner: 0.013; radiusOuter: 0.022; segmentsTheta: 32"
+          material="color: #E6EEEA; shader: flat; opacity: 0.95; transparent: true; depthTest: false"
+          animation__fuse="property: scale; from: 1 1 1; to: 0.3 0.3 0.3; dur: 1400; easing: linear; startEvents: fusing"
+          animation__reset="property: scale; to: 1 1 1; dur: 120; easing: easeOutQuad; startEvents: mouseleave, click"></a-entity>
+        <a-entity id="fade"
+          geometry="primitive: sphere; radius: 0.45; segmentsWidth: 16; segmentsHeight: 12"
+          material="color: #000000; shader: flat; side: back; transparent: true; opacity: 0; depthTest: false; depthWrite: false"></a-entity>
+      </a-entity>
+      <a-entity id="hand-l" laser-controls="hand: left" raycaster="objects: .clickable; far: 30"></a-entity>
+      <a-entity id="hand-r" laser-controls="hand: right" raycaster="objects: .clickable; far: 30"></a-entity>
+    </a-entity>
+    <a-entity id="mouse" cursor="rayOrigin: mouse" raycaster="objects: .clickable; far: 30"></a-entity>
+  </a-scene>
+</div>
+
+<div id="brand" class="ui"><small>FCEyN · UNLPam</small><b>Sala Virtual de Paleontología</b></div>
+<p id="ayuda" class="ui">Arrastrá para mirar · W A S D para caminar · tocá los círculos del piso para avanzar</p>
+<div id="bar" class="ui">
+  <button type="button" class="btn" id="btn-vr">Anteojos VR (Cardboard)</button>
+  <button type="button" class="btn sec" id="btn-tour">Recorrido guiado</button>
+</div>
+<button type="button" class="btn sec ui" id="btn-exit">Salir del modo VR</button>
+
+<div id="vrhint" aria-live="polite">
+  <div>Colocá el celular en los anteojos<small>Mirá un círculo del piso para caminar hasta él</small></div>
+  <div>Colocá el celular en los anteojos<small>Mirá un círculo del piso para caminar hasta él</small></div>
+</div>
+<div id="toast" role="status"></div>
+<div id="loader">
+  <span class="k">Facultad de Ciencias Exactas y Naturales · UNLPam</span>
+  <h1>Sala Virtual de Paleontología</h1>
+  <div id="loader-bar"><i></i></div>
+  <p id="loader-msg">Preparando la sala…</p>
+</div>
+
+<script>
+(function(){
+'use strict';
+var $=function(s){return document.querySelector(s)};
+var loaderMsg=$('#loader-msg');
+if(!window.AFRAME){
+  loaderMsg.textContent='No se pudo cargar A-Frame desde internet. Revisá la conexión y recargá la página.';
+  return;
+}
+/* GLTFLoader usa fetch() sobre una URL blob: para decodificar texturas si existe createImageBitmap.
+   Algunos entornos (páginas dentro de un marco con CSP estricta) bloquean ese fetch. Sin createImageBitmap
+   usa el camino clásico con <img>, que funciona en todos lados. */
+try{window.createImageBitmap=undefined}catch(e){}
+
+var THREE=AFRAME.THREE;
+var scene=$('#scene'),rig=$('#rig'),cam=$('#cam'),gaze=$('#gaze'),mouse=$('#mouse'),fadeEl=$('#fade');
+
+/* ---------- 1. DATOS DE LAS PIEZAS ----------
+   Para cargar los datos reales: completá cientifico, periodo, procedencia y tamano de cada pieza.
+   Los .glb van en la MISMA carpeta que este HTML: modelo1.glb … modelo5.glb (pedestales 1 a 5, de la entrada al fondo).
+   Para cambiar una pieza, reemplazá el archivo o la ruta en 'glb'. Para agregar otra, sumá un objeto.
+   Los modelos se ajustan solos al pedestal (tamaño y apoyo), así que no hace falta medirlos. */
+var PIEZAS=[
+ {glb:'modelo1.glb',codigo:'GHUNLPam 28000',coleccion:'Paleontológica',lado:'izq',z:-4.5,size:0.62,spin:48,tilt:0,yaw:0},
+ {glb:'modelo2.glb',codigo:'PVSJ 585',coleccion:'Ricardo',lado:'der',z:-4.5,size:0.72,spin:0,tilt:28,yaw:90},
+ {glb:'modelo3.glb',codigo:'GHUNLPam 15375',coleccion:'Paleontológica',lado:'izq',z:-10,size:0.6,spin:48,tilt:0,yaw:0},
+ {glb:'modelo4.glb',codigo:'GHUNLPam 29818',coleccion:'Ricardo',lado:'der',z:-10,size:0.72,spin:0,tilt:30,yaw:0},
+ {glb:'modelo5.glb',codigo:'Avipeda 8643',coleccion:'Ricardo',lado:'centro',z:-16.4,size:0.95,spin:0,tilt:28,yaw:0}
+].map(function(p){return Object.assign({cientifico:'',periodo:'',procedencia:'',tamano:''},p)});
+
+var SALA={ancho:7,fondo:-19,atras:3.2,alto:4.2,xPed:2.35};
+var TOP=1.05; /* altura de la tapa de los pedestales */
+function pos(p){return {x:p.lado==='izq'?-SALA.xPed:p.lado==='der'?SALA.xPed:0,z:p.z}}
+/* puntos del piso a los que se puede caminar: uno junto a cada pedestal */
+var ESTACIONES=[
+ {x:-0.95,z:-4.5,p:0},{x:0.95,z:-4.5,p:1},{x:-0.95,z:-10,p:2},{x:0.95,z:-10,p:3},{x:0,z:-14.6,p:4}
+];
+var INICIO={x:0,z:0};
+
+var busy=false,tourOn=false,stereoOn=false;
+
+/* ---------- 2. UTILIDADES ---------- */
+function E(tag,attrs,parent){
+  var el=document.createElement(tag),k;
+  for(k in attrs)el.setAttribute(k,attrs[k]);
+  (parent||scene).appendChild(el);
+  return el;
+}
+function sleep(ms){return new Promise(function(r){setTimeout(r,ms)})}
+var toastT=0;
+function toast(msg,ms){
+  var t=$('#toast');
+  t.textContent=msg;t.classList.add('on');
+  clearTimeout(toastT);
+  toastT=setTimeout(function(){t.classList.remove('on')},ms||4500);
+}
+function localBox(root){
+  var box=new THREE.Box3(),inv=new THREE.Matrix4(),m=new THREE.Matrix4();
+  root.updateMatrixWorld(true);
+  inv.copy(root.matrixWorld).invert();
+  root.traverse(function(o){
+    if(o.isMesh&&o.geometry){
+      o.geometry.computeBoundingBox();
+      m.multiplyMatrices(inv,o.matrixWorld);
+      box.union(o.geometry.boundingBox.clone().applyMatrix4(m));
+    }
+  });
+  return box;
+}
+
+/* ---------- 3. TEXTURAS DIBUJADAS CON CANVAS (carteles, fichas, friso) ---------- */
+var FD='"Bricolage Grotesque","Segoe UI",system-ui,-apple-system,Helvetica,Arial,sans-serif';
+var FM='"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace';
+function tex(w,h,fn){
+  var c=document.createElement('canvas');
+  c.width=w;c.height=h;
+  fn(c.getContext('2d'),w,h);
+  return c.toDataURL('image/png');
+}
+function put(x,text,px,py,size,weight,font,color,maxW,style){
+  var s=size;
+  x.fillStyle=color;
+  do{x.font=(style||'')+' '+weight+' '+s+'px '+font;s-=2}while(maxW&&x.measureText(text).width>maxW&&s>18);
+  x.fillText(text,px,py);
+}
+function plaqueTex(p){
+  return tex(1024,480,function(x,w,h){
+    x.fillStyle='#F2EFE6';x.fillRect(0,0,w,h);
+    x.fillStyle='#0C6657';x.fillRect(0,0,28,h);
+    x.textBaseline='alphabetic';x.textAlign='left';
+    put(x,p.codigo,70,200,112,700,FD,'#17201D',w-120);
+    put(x,'Colección '+p.coleccion,70,288,54,500,FD,'#506059',w-120);
+    x.fillStyle='#BAC5BC';x.fillRect(70,330,w-140,3);
+    put(x,'MUSEO VIRTUAL DE PALEONTOLOGÍA · FCEyN UNLPam',70,400,30,500,FM,'#506059',w-120);
+  });
+}
+function cardTex(p){
+  return tex(1280,800,function(x,w,h){
+    x.fillStyle='#F2EFE6';x.fillRect(0,0,w,h);
+    x.strokeStyle='#17201D';x.lineWidth=6;x.strokeRect(3,3,w-6,h-6);
+    x.fillStyle='#0C6657';x.fillRect(0,0,34,h);
+    x.textBaseline='alphabetic';x.textAlign='left';
+    put(x,p.codigo,84,150,104,700,FD,'#17201D',w-140);
+    put(x,'Colección '+p.coleccion,84,222,52,500,FD,'#506059',w-140);
+    x.fillStyle='#BAC5BC';x.fillRect(84,258,w-168,3);
+    var rows=[['NOMBRE CIENTÍFICO',p.cientifico],['PERÍODO',p.periodo],['PROCEDENCIA',p.procedencia],['TAMAÑO REAL',p.tamano]],i,y;
+    for(i=0;i<rows.length;i++){
+      y=316+i*102;
+      put(x,rows[i][0],84,y,30,500,FM,'#506059');
+      if(rows[i][1])put(x,rows[i][1],84,y+52,50,600,FD,'#17201D',w-168);
+      else put(x,'Por completar',84,y+52,48,500,FD,'#8A938D',w-168,'italic');
+    }
+    put(x,'Mirá la pieza unos segundos para acercarla.',84,762,30,400,FM,'#506059',w-168);
+  });
+}
+var PERIODOS=[['Triásico',51,'#812B92','#FFFFFF','252–201 Ma'],['Jurásico',56,'#34B2C9','#0B1F23','201–145 Ma'],
+  ['Cretácico',79,'#7FC64E','#0F2008','145–66 Ma'],['Paleógeno',43,'#FD9A52','#2A1405','66–23 Ma'],
+  ['Neógeno',20.4,'#FFE619','#2A2500','23–2,6 Ma'],['Cuaternario',2.6,'#F9F97F','#2A2500','']];
+function friezeTex(){
+  return tex(3600,128,function(x,w,h){
+    var tot=0,i,acc=0,sw;
+    PERIODOS.forEach(function(q){tot+=q[1]});
+    x.textBaseline='alphabetic';x.textAlign='left';
+    for(i=0;i<PERIODOS.length;i++){
+      sw=PERIODOS[i][1]/tot*w;
+      x.fillStyle=PERIODOS[i][2];x.fillRect(acc,0,sw,h);
+      x.fillStyle='rgba(0,0,0,.35)';x.fillRect(acc+sw-3,0,3,h);
+      if(sw>230){
+        put(x,PERIODOS[i][0],acc+28,64,46,700,FD,PERIODOS[i][3],sw-50);
+        put(x,PERIODOS[i][4],acc+28,106,30,500,FM,PERIODOS[i][3],sw-50);
+      }
+      acc+=sw;
+    }
+  });
+}
+function titleTex(){
+  return tex(2048,512,function(x,w,h){
+    x.textBaseline='alphabetic';x.textAlign='center';
+    put(x,'MUSEO VIRTUAL DE',w/2,120,56,500,FM,'#94A59E');
+    put(x,'Paleontología',w/2,300,230,700,FD,'#E6EEEA',w-120);
+    put(x,'Facultad de Ciencias Exactas y Naturales · UNLPam',w/2,420,54,500,FD,'#94A59E',w-120);
+  });
+}
+function welcomeTex(){
+  return tex(1536,864,function(x,w,h){
+    x.textBaseline='alphabetic';x.textAlign='left';
+    put(x,'CÓMO RECORRER LA SALA',120,170,48,500,FM,'#52C7AF');
+    var L=['Mirá un círculo luminoso del piso para caminar hasta él.','Mirá una pieza fijo para acercarla y ver su ficha.','Girá la cabeza, o arrastrá la pantalla, para mirar alrededor.'],i;
+    for(i=0;i<L.length;i++)put(x,L[i],120,340+i*150,52,600,FD,'#E6EEEA');
+  });
+}
+function planeTex(w,h,src,transparent){
+  return {shader:'flat',src:src,transparent:!!transparent,side:'front'};
+}
+
+/* ---------- 4. LA SALA ---------- */
+function buildSala(){
+  var W=SALA.ancho,L=SALA.atras-SALA.fondo,cz=(SALA.atras+SALA.fondo)/2,H=SALA.alto,i;
+  var wall='color: #1d3a33; roughness: 1; metalness: 0';
+  E('a-entity',{geometry:'primitive: plane; width: '+W+'; height: '+L,material:'color: #2c2925; roughness: 0.92; metalness: 0',position:'0 0 '+cz,rotation:'-90 0 0'});
+  E('a-entity',{geometry:'primitive: plane; width: 2.2; height: '+(L-1),material:'color: #3d3832; roughness: 0.9; metalness: 0',position:'0 0.004 '+cz,rotation:'-90 0 0'});
+  E('a-entity',{geometry:'primitive: plane; width: '+W+'; height: '+L,material:'color: #13181a; roughness: 1; metalness: 0',position:'0 '+H+' '+cz,rotation:'90 0 0'});
+  E('a-entity',{geometry:'primitive: plane; width: '+L+'; height: '+H,material:wall,position:(-W/2)+' '+(H/2)+' '+cz,rotation:'0 90 0'});
+  E('a-entity',{geometry:'primitive: plane; width: '+L+'; height: '+H,material:wall,position:(W/2)+' '+(H/2)+' '+cz,rotation:'0 -90 0'});
+  E('a-entity',{geometry:'primitive: plane; width: '+W+'; height: '+H,material:wall,position:'0 '+(H/2)+' '+SALA.fondo});
+  E('a-entity',{geometry:'primitive: plane; width: '+W+'; height: '+H,material:wall,position:'0 '+(H/2)+' '+SALA.atras,rotation:'0 180 0'});
+  /* zócalos */
+  E('a-entity',{geometry:'primitive: box; width: 0.06; height: 0.16; depth: '+L,material:'color: #121816; roughness: 1',position:(-W/2+0.03)+' 0.08 '+cz});
+  E('a-entity',{geometry:'primitive: box; width: 0.06; height: 0.16; depth: '+L,material:'color: #121816; roughness: 1',position:(W/2-0.03)+' 0.08 '+cz});
+  /* tiras de luz en el cielorraso */
+  for(i=0;i<5;i++)E('a-entity',{geometry:'primitive: box; width: 0.16; height: 0.03; depth: 1.6',material:'shader: flat; color: #FFF3DC',position:'0 '+(H-0.02)+' '+(-2-i*4)});
+  /* luz general */
+  E('a-entity',{light:'type: hemisphere; color: #cfe8e0; groundColor: #2a2118; intensity: 0.85'});
+  /* friso con la escala del tiempo en la pared izquierda (el tiempo avanza hacia el fondo) */
+  E('a-entity',{geometry:'primitive: plane; width: 18; height: 0.64',material:planeTex(0,0,friezeTex()),position:(-W/2+0.01)+' 3.15 -9.6',rotation:'0 90 0'});
+  E('a-entity',{geometry:'primitive: plane; width: 4.6; height: 0.26',material:planeTex(0,0,tex(1152,128,function(x,w,h){
+    x.textBaseline='alphabetic';x.textAlign='left';
+    put(x,'ESCALA DEL TIEMPO GEOLÓGICO · MILLONES DE AÑOS',14,84,44,500,FM,'#94A59E',w-28);
+  }),true),position:(-W/2+0.01)+' 3.62 -2.7',rotation:'0 90 0'});
+  /* carteles de pared */
+  E('a-entity',{geometry:'primitive: plane; width: 5.2; height: 1.3',material:planeTex(0,0,titleTex(),true),position:'0 2.7 '+(SALA.fondo+0.02)});
+  E('a-entity',{geometry:'primitive: plane; width: 3.6; height: 2.025',material:planeTex(0,0,welcomeTex(),true),position:'0 2.1 '+(SALA.atras-0.02),rotation:'0 180 0'});
+}
+
+var EX=[];
+function buildPieza(p,i){
+  var ps=pos(p),yaw=p.lado==='izq'?90:p.lado==='der'?-90:0;
+  var g=E('a-entity',{position:ps.x+' 0 '+ps.z,rotation:'0 '+yaw+' 0'});
+  E('a-entity',{geometry:'primitive: box; width: 0.7; height: 1; depth: 0.7',material:'color: #d9d3c5; roughness: 0.85; metalness: 0',position:'0 0.5 0'},g);
+  E('a-entity',{geometry:'primitive: box; width: 0.82; height: 0.05; depth: 0.82',material:'color: #b9b2a1; roughness: 0.8; metalness: 0',position:'0 1.025 0'},g);
+  E('a-entity',{geometry:'primitive: plane; width: 0.56; height: 0.262',material:planeTex(0,0,plaqueTex(p)),position:'0 0.6 0.352'},g);
+  E('a-entity',{id:'tgt'+i,position:'0 1.1 0'},g);
+  var spot=E('a-entity',{light:'type: spot; color: #fff1d6; intensity: 1.7; angle: 34; penumbra: 0.55; decay: 1.2; distance: 9; target: #tgt'+i,position:'0 3.7 0.9'},g);
+  var zoomer=E('a-entity',{position:'0 '+TOP+' 0'},g);
+  var spinner=E('a-entity',{},zoomer);
+  if(p.spin>0)spinner.setAttribute('animation__spin','property: rotation; from: 0 0 0; to: 0 360 0; dur: '+(p.spin*1000)+'; easing: linear; loop: true');
+  var tilter=E('a-entity',{},spinner);
+  var yawer=E('a-entity',{},tilter);
+  var model=E('a-entity',{'class':'clickable pieza'},yawer);
+  var card=E('a-entity',{geometry:'primitive: plane; width: 0.96; height: 0.6',material:planeTex(0,0,cardTex(p)),position:'0 2.1 0.35',rotation:'12 0 0',visible:false},g);
+  var ex={p:p,i:i,g:g,spot:spot,zoomer:zoomer,spinner:spinner,tilter:tilter,yawer:yawer,model:model,card:card,examining:false,loaded:false,x:ps.x,z:ps.z};
+  EX.push(ex);
+  model.addEventListener('mouseenter',function(){hover(ex,true)});
+  model.addEventListener('mouseleave',function(){hover(ex,false)});
+  model.addEventListener('click',function(){examine(ex,!ex.examining)});
+  model.addEventListener('model-loaded',function(){onModel(ex)});
+  model.addEventListener('model-error',function(){onModelError(ex)});
+}
+
+function buildEstaciones(){
+  ESTACIONES.forEach(function(s,k){
+    var d=E('a-entity',{'class':'clickable estacion',geometry:'primitive: circle; radius: 0.4; segments: 32',material:'shader: flat; color: #52C7AF; opacity: 0.5; transparent: true; side: double',position:s.x+' 0.012 '+s.z,rotation:'-90 0 0',
+      animation__pulse:'property: material.opacity; from: 0.32; to: 0.68; dir: alternate; loop: true; dur: 1300; easing: easeInOutSine'});
+    E('a-entity',{geometry:'primitive: ring; radiusInner: 0.4; radiusOuter: 0.46; segmentsTheta: 32',material:'shader: flat; color: #E6EEEA; opacity: 0.9; transparent: true',position:'0 0 0.003'},d);
+    var beam=E('a-entity',{'class':'clickable estacion',geometry:'primitive: cylinder; radius: 0.3; height: 1.5; openEnded: true; segmentsRadial: 20',material:'shader: flat; color: #52C7AF; opacity: 0.14; transparent: true; side: double; depthWrite: false',position:s.x+' 0.75 '+s.z});
+    [d,beam].forEach(function(el){el.addEventListener('click',function(){caminarA(s)})});
+  });
+}
+
+/* ---------- 5. MODELOS: carga, ajuste y materiales ---------- */
+var qi=0,nOk=0,nErr=0,errs=[];
+function loaderUpdate(){
+  var tot=PIEZAS.length;
+  $('#loader-msg').textContent='Cargando piezas… '+nOk+' de '+tot+(nErr?' ('+nErr+' con error)':'');
+  $('#loader-bar i').style.width=((nOk+nErr)/tot*100)+'%';
+}
+function loaderDone(){$('#loader').classList.add('done')}
+function loadNext(){
+  if(qi>=EX.length)return;
+  var ex=EX[qi++];
+  ex.model.setAttribute('gltf-model','url('+ex.p.glb+')');
+}
+function onModel(ex){
+  var obj=ex.model.object3D,p=ex.p,renderer=scene.renderer,aniso=1;
+  try{aniso=Math.min(4,renderer.capabilities.getMaxAnisotropy())}catch(e){}
+  /* Fotogrametría: la luz ya está en la textura. Material sin iluminación, igual que en Sketchfab. */
+  obj.traverse(function(o){
+    if(!o.isMesh)return;
+    o.el=ex.model; /* para que el cursor reconozca la pieza al apuntar a cualquier parte de la malla */
+    var m=o.material,nm;
+    if(m&&!m.isMeshBasicMaterial){
+      nm=new THREE.MeshBasicMaterial({map:m.map||null,color:0xffffff,side:THREE.DoubleSide});
+      o.material=nm;
+      if(m.dispose)m.dispose();
+      m=nm;
+    }else if(m){m.side=THREE.DoubleSide}
+    if(m&&m.map){m.map.anisotropy=aniso;m.map.needsUpdate=true}
+  });
+  /* Normaliza tamaño y apoya la base en y=0 (sirve para cualquier GLB que se agregue después) */
+  var box=localBox(obj),sz=box.getSize(new THREE.Vector3()),c=box.getCenter(new THREE.Vector3());
+  var mx=Math.max(sz.x,sz.y,sz.z)||1,s=1/mx;
+  obj.scale.setScalar(s);
+  obj.position.set(-c.x*s,-box.min.y*s,-c.z*s);
+  /* orientación de exhibición: giro en su plano y luego inclinación hacia el visitante */
+  ex.yawer.object3D.rotation.y=THREE.MathUtils.degToRad(p.yaw);
+  ex.tilter.object3D.rotation.x=THREE.MathUtils.degToRad(p.tilt);
+  ex.tilter.object3D.scale.setScalar(p.size);
+  var rot=new THREE.Matrix4().makeRotationX(THREE.MathUtils.degToRad(p.tilt)).multiply(new THREE.Matrix4().makeRotationY(THREE.MathUtils.degToRad(p.yaw)));
+  var hx=sz.x*s/2,hz=sz.z*s/2,hy=sz.y*s,minY=1e9,maxY=-1e9,v=new THREE.Vector3(),a,b,d;
+  for(a=-1;a<=1;a+=2)for(b=0;b<=1;b++)for(d=-1;d<=1;d+=2){
+    v.set(a*hx,b*hy,d*hz).applyMatrix4(rot).multiplyScalar(p.size);
+    if(v.y<minY)minY=v.y;
+    if(v.y>maxY)maxY=v.y;
+  }
+  ex.tilter.object3D.position.y=-minY+0.004;
+  ex.card.object3D.position.y=Math.max(1.75,TOP+(maxY-minY)+0.62);
+  ex.loaded=true;
+  nOk++;
+  loaderUpdate();
+  if(nOk>=2||nOk+nErr>=EX.length)loaderDone();
+  loadNext();
+}
+/* si un archivo falta, el pedestal muestra un contorno ámbar donde irá la pieza */
+function marcador(ex){
+  var s=ex.p.size,h=s*0.55;
+  E('a-entity',{geometry:'primitive: box; width: '+s+'; height: '+h+'; depth: '+(s*0.6),material:'shader: flat; color: #E2AE55; wireframe: true; opacity: 0.75; transparent: true',position:'0 '+(h/2+0.004)+' 0'},ex.zoomer);
+}
+function onModelError(ex){
+  nErr++;errs.push(ex.p.glb);
+  loaderUpdate();
+  marcador(ex);
+  toast('No se encontró: '+errs.join(', ')+'. Guardá los .glb en la misma carpeta que este HTML.',14000);
+  if(nOk>=1||nOk+nErr>=EX.length)loaderDone();
+  loadNext();
+}
+
+/* ---------- 6. INTERACCIÓN ---------- */
+function showCard(ex,on){
+  ex.card.setAttribute('visible',!!on);
+  ex.spot.setAttribute('light','intensity',on?2.6:1.7);
+}
+function hover(ex,on){
+  showCard(ex,on||(tourOn&&ex.tourFocus));
+  if(!on&&ex.examining&&!(tourOn&&ex.tourFocus))examine(ex,false);
+}
+function examine(ex,on){
+  ex.examining=on;
+  ex.zoomer.setAttribute('animation__scale',{property:'scale',to:on?'1.45 1.45 1.45':'1 1 1',dur:450,easing:'easeOutCubic'});
+  ex.zoomer.setAttribute('animation__lift',{property:'position',to:on?'0 '+(TOP+0.05)+' 0.22':'0 '+TOP+' 0',dur:450,easing:'easeOutCubic'});
+}
+var fadeMesh=null,fadeRaf=0;
+/* La malla del fundido se busca al usarla: el evento 'loaded' pudo haber ocurrido antes de que este script lo escuche */
+function mallaFundido(){
+  if(!fadeMesh&&fadeEl.getObject3D){
+    fadeMesh=fadeEl.getObject3D('mesh')||null;
+    if(fadeMesh){fadeMesh.renderOrder=999;fadeMesh.frustumCulled=false;fadeMesh.visible=false}
+  }
+  return fadeMesh;
+}
+function fade(to,ms,done){
+  if(!mallaFundido()){if(done)done();return}
+  var from=fadeMesh.material.opacity,t0=performance.now();
+  cancelAnimationFrame(fadeRaf);
+  fadeMesh.visible=true;
+  (function step(now){
+    var k=Math.min(1,(now-t0)/ms);
+    fadeMesh.material.opacity=from+(to-from)*k;
+    if(k<1){fadeRaf=requestAnimationFrame(step)}
+    else{fadeMesh.visible=to>0.001;if(done)done()}
+  })(t0);
+}
+/* Desplazamiento por "parpadeo": un fundido corto evita el mareo del movimiento continuo en VR */
+function irA(pt,opts){
+  if(busy)return;
+  busy=true;
+  fade(1,170,function(){
+    rig.object3D.position.set(pt.x,0,pt.z);
+    rig.object3D.rotation.y=(opts&&opts.yaw!=null)?opts.yaw:rig.object3D.rotation.y;
+    fade(0,240,function(){busy=false;if(opts&&opts.done)opts.done()});
+  });
+}
+function caminarA(s){
+  if(tourOn)tourStop(false);
+  irA(s);
+}
+
+/* ---------- 7. RECORRIDO GUIADO ---------- */
+var tourIdx=0,tourTimer=0;
+function tourStep(){
+  if(!tourOn)return;
+  if(tourIdx>=ESTACIONES.length){tourStop(true);return}
+  var s=ESTACIONES[tourIdx],ex=EX[s.p],pp=pos(ex.p);
+  var yaw=Math.atan2(-(pp.x-s.x),-(pp.z-s.z));
+  ex.tourFocus=true;
+  irA(s,{yaw:yaw,done:function(){
+    if(!tourOn)return;
+    showCard(ex,true);
+    tourTimer=setTimeout(function(){
+      examine(ex,true);
+      tourTimer=setTimeout(function(){
+        examine(ex,false);showCard(ex,false);ex.tourFocus=false;
+        tourIdx++;tourStep();
+      },5500);
+    },1800);
+  }});
+}
+function tourStart(){
+  tourOn=true;tourIdx=0;
+  $('#btn-tour').textContent='Detener recorrido';
+  tourStep();
+}
+function tourStop(volver){
+  tourOn=false;
+  clearTimeout(tourTimer);
+  EX.forEach(function(ex){ex.tourFocus=false;if(ex.examining)examine(ex,false);showCard(ex,false)});
+  $('#btn-tour').textContent='Recorrido guiado';
+  if(volver)irA(INICIO,{yaw:0});
+}
+$('#btn-tour').addEventListener('click',function(){
+  if(tourOn)tourStop(true);else{if(!busy)tourStart()}
+});
+
+/* ---------- 8. CAMINAR CON EL TECLADO (escritorio) ---------- */
+function limitar(p){
+  var lim=SALA.ancho/2-0.4;
+  p.x=Math.max(-lim,Math.min(lim,p.x));
+  p.z=Math.max(SALA.fondo+0.5,Math.min(SALA.atras-0.4,p.z));
+  EX.forEach(function(ex){
+    var dx=p.x-ex.x,dz=p.z-ex.z,d=Math.sqrt(dx*dx+dz*dz);
+    if(d<0.85&&d>0.0001){p.x=ex.x+dx/d*0.85;p.z=ex.z+dz/d*0.85}
+  });
+}
+/* El componente se registra aquí y se asigna por código: si estuviera escrito en el HTML, A-Frame
+   podría inicializar la entidad antes de que este script lo registre y lo ignoraría. */
+AFRAME.registerComponent('walk',{
+  schema:{speed:{default:2.0}},
+  init:function(){
+    var self=this,codes=['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'];
+    this.k={};this.v=new THREE.Vector3();this.r=new THREE.Vector3();
+    window.addEventListener('keydown',function(e){if(codes.indexOf(e.code)>-1)self.k[e.code]=true});
+    window.addEventListener('keyup',function(e){if(codes.indexOf(e.code)>-1)self.k[e.code]=false});
+    window.addEventListener('blur',function(){self.k={}});
+  },
+  tick:function(t,dt){
+    var k=this.k,f,s,cam3=this.el.sceneEl.camera,d,p;
+    if(!dt||busy||tourOn||!cam3)return;
+    f=(k.KeyW||k.ArrowUp?1:0)-(k.KeyS||k.ArrowDown?1:0);
+    s=(k.KeyD||k.ArrowRight?1:0)-(k.KeyA||k.ArrowLeft?1:0);
+    if(!f&&!s)return;
+    cam3.getWorldDirection(this.v);
+    this.v.y=0;
+    if(this.v.lengthSq()<1e-6)return;
+    this.v.normalize();
+    this.r.set(-this.v.z,0,this.v.x);
+    d=Math.min(dt,80)/1000*this.data.speed;
+    p=this.el.object3D.position;
+    p.x+=(this.v.x*f+this.r.x*s)*d;
+    p.z+=(this.v.z*f+this.r.z*s)*d;
+    limitar(p);
+  }
+});
+
+rig.setAttribute('walk','speed: 2');
+
+/* ---------- 9. MODO CARDBOARD: pantalla dividida en dos ojos ---------- */
+var stereoReady=false,sensorSeen=false,wake=null,estereo=null;
+window.addEventListener('deviceorientation',function(e){
+  if(e.alpha!=null||e.beta!=null||e.gamma!=null)sensorSeen=true;
+});
+function prepararEstereo(){
+  var r=scene.renderer;
+  if(stereoReady||!r||!THREE.StereoCamera)return;
+  try{
+    var st=new THREE.StereoCamera(),orig=r.render.bind(r),size=new THREE.Vector2();
+    st.aspect=0.5;st.eyeSep=0.064;
+    r.render=function(sc,camera){
+      if(!stereoOn||(r.xr&&r.xr.isPresenting)||!camera||!camera.isPerspectiveCamera)return orig(sc,camera);
+      r.getSize(size);
+      sc.updateMatrixWorld();
+      if(camera.parent===null)camera.updateMatrixWorld();
+      st.update(camera);
+      var w=size.x/2,h=size.y;
+      r.setScissorTest(true);
+      r.setScissor(0,0,w,h);r.setViewport(0,0,w,h);orig(sc,st.cameraL);
+      r.setScissor(w,0,w,h);r.setViewport(w,0,w,h);orig(sc,st.cameraR);
+      r.setScissorTest(false);
+      r.setViewport(0,0,size.x,size.y);
+    };
+    stereoReady=true;
+  }catch(err){console.warn('No se pudo preparar el modo estéreo',err)}
+}
+async function entrarEstereo(){
+  if(stereoOn)return;
+  prepararEstereo();
+  if(!stereoReady){toast('Este navegador no permite el modo de pantalla dividida.');return}
+  try{
+    if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function'){
+      await DeviceOrientationEvent.requestPermission();
+    }
+  }catch(e){}
+  /* La vista dividida se activa ya; pantalla completa, bloqueo horizontal y pantalla encendida se piden
+     en paralelo y sin esperar: si el navegador los rechaza, el modo funciona igual. */
+  stereoOn=true;
+  document.body.classList.add('stereo');
+  try{
+    var root=document.documentElement,fs=null;
+    if(root.requestFullscreen)fs=root.requestFullscreen({navigationUI:'hide'});
+    else if(root.webkitRequestFullscreen)root.webkitRequestFullscreen();
+    var bloquear=function(){try{var pr=screen.orientation.lock('landscape');if(pr&&pr.catch)pr.catch(function(){})}catch(e){}};
+    if(fs&&fs.then)fs.then(bloquear,function(){});else bloquear();
+  }catch(e){}
+  try{
+    if(navigator.wakeLock)navigator.wakeLock.request('screen').then(function(w){wake=w},function(){});
+  }catch(e){}
+  var gm=gaze.getObject3D&&gaze.getObject3D('mesh');
+  if(gm)gm.renderOrder=1000; /* la mira siempre se dibuja encima */
+  gaze.setAttribute('visible',true);
+  gaze.setAttribute('raycaster','enabled',true);
+  mouse.setAttribute('raycaster','enabled',false);
+  try{cam.setAttribute('look-controls','touchEnabled',false)}catch(e){}
+  window.dispatchEvent(new Event('resize'));
+  $('#vrhint').classList.add('on');
+  setTimeout(function(){$('#vrhint').classList.remove('on')},4500);
+  await sleep(700);
+  if(!sensorSeen){
+    toast('No llegan datos del giroscopio, así que el celular no seguirá el movimiento de tu cabeza. Abrí esta página directamente en el navegador (no dentro de otra app ni de otra página).',12000);
+  }
+}
+function salirEstereo(){
+  if(!stereoOn)return;
+  stereoOn=false;
+  document.body.classList.remove('stereo');
+  gaze.setAttribute('visible',false);
+  gaze.setAttribute('raycaster','enabled',false);
+  mouse.setAttribute('raycaster','enabled',true);
+  try{cam.setAttribute('look-controls','touchEnabled',true)}catch(e){}
+  try{if(document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen()}catch(e){}
+  try{if(screen.orientation&&screen.orientation.unlock)screen.orientation.unlock()}catch(e){}
+  try{if(wake){wake.release();wake=null}}catch(e){}
+  $('#vrhint').classList.remove('on');
+  window.dispatchEvent(new Event('resize'));
+}
+$('#btn-vr').addEventListener('click',entrarEstereo);
+$('#btn-exit').addEventListener('click',salirEstereo);
+document.addEventListener('fullscreenchange',function(){
+  if(stereoOn&&!document.fullscreenElement)salirEstereo();
+});
+
+/* ---------- 10. ARRANQUE ---------- */
+function arrancar(){
+  buildSala();
+  PIEZAS.forEach(buildPieza);
+  buildEstaciones();
+  loaderUpdate();
+  var go=function(){prepararEstereo();loadNext()};
+  if(scene.hasLoaded)go();else scene.addEventListener('loaded',go);
+  setTimeout(loaderDone,30000);
+}
+/* espera un instante a las tipografías para que los carteles las usen */
+var fontsReady=(document.fonts&&document.fonts.load)
+  ?Promise.race([Promise.all([document.fonts.load('700 40px "Bricolage Grotesque"'),document.fonts.load('500 30px "IBM Plex Mono"')]),sleep(1500)])
+  :Promise.resolve();
+fontsReady.catch(function(){}).then(arrancar);
+})();
+</script>
+</body>
+</html>
