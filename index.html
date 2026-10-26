@@ -65,10 +65,24 @@ body.stereo #brand,body.stereo #ayuda,body.stereo #bar{display:none}
 @media (max-width:620px){#ayuda{display:none}}
 @media (prefers-reduced-motion:reduce){#loader,#toast{transition:none}}
 </style>
+<script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+<script>
+/* Respaldo: solo si la copia oficial de A-Frame no llegó (por ejemplo, una red que la bloquea) se pide una copia espejo.
+   Se hace sin frenar la página y sin mostrar errores. */
+(function(){
+  if(window.AFRAME)return;
+  var urls=['https://cdn.jsdelivr.net/npm/aframe@1.4.2/dist/aframe.min.js','https://unpkg.com/aframe@1.4.2/dist/aframe.min.js'],i=0;
+  (function siguiente(){
+    if(window.AFRAME||i>=urls.length)return;
+    var s=document.createElement('script');
+    s.src=urls[i++];
+    s.onerror=siguiente;
+    document.head.appendChild(s);
+  })();
+})();
+</script>
 </head>
 <body>
-<script src="https://cdn.jsdelivr.net/npm/aframe@1.5.0/dist/aframe.min.js"></script>
-
 <div id="app">
   <a-scene id="scene" embedded loading-screen="enabled: false" background="color: #0b1110" renderer="antialias: true" vr-mode-ui="enabled: true" device-orientation-permission-ui="enabled: true">
     <a-entity id="rig" position="0 0 0">
@@ -116,10 +130,19 @@ body.stereo #brand,body.stereo #ayuda,body.stereo #bar{display:none}
 'use strict';
 var $=function(s){return document.querySelector(s)};
 var loaderMsg=$('#loader-msg');
-if(!window.AFRAME){
-  loaderMsg.textContent='No se pudo cargar A-Frame desde internet. Revisá la conexión y recargá la página.';
-  return;
+/* A-Frame se pide en el <head>. Si tarda en llegar, la página espera sin cortar la carga ni mostrar un error. */
+function esperarAFrame(cb){
+  var t0=Date.now(),avisado=false;
+  (function revisar(){
+    if(window.AFRAME&&AFRAME.THREE){cb();return}
+    if(!avisado&&Date.now()-t0>20000){
+      avisado=true;
+      loaderMsg.textContent='A-Frame está tardando en descargarse. Seguimos intentando; si no avanza, recargá la página.';
+    }
+    setTimeout(revisar,150);
+  })();
 }
+function iniciarSala(){
 /* GLTFLoader usa fetch() sobre una URL blob: para decodificar texturas si existe createImageBitmap.
    Algunos entornos (páginas dentro de un marco con CSP estricta) bloquean ese fetch. Sin createImageBitmap
    usa el camino clásico con <img>, que funciona en todos lados. */
@@ -624,6 +647,8 @@ var fontsReady=(document.fonts&&document.fonts.load)
   ?Promise.race([Promise.all([document.fonts.load('700 40px "Bricolage Grotesque"'),document.fonts.load('500 30px "IBM Plex Mono"')]),sleep(1500)])
   :Promise.resolve();
 fontsReady.catch(function(){}).then(arrancar);
+}
+esperarAFrame(iniciarSala);
 })();
 </script>
 </body>
