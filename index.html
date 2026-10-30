@@ -1,96 +1,3 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Sala Virtual de Paleontología</title>
-<meta name="theme-color" content="#0D1412">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
-
-<!-- Librería principal de A-Frame -->
-<script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-
-<style>
-:root{
-  color-scheme:dark;
-  --bg:#0D1412;--surface:#16211E;--ink:#E6EEEA;--ink-2:#94A59E;--line:#27352F;
-  --accent:#52C7AF;--accent-ink:#06201A;--amb:#E2AE55;
-  --f-display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
-  --f-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
-}
-*,*::before,*::after{box-sizing:border-box}
-html,body{height:100%}
-body{margin:0;background:var(--bg);color:var(--ink);font:500 15px/1.4 var(--f-display);overflow:hidden}
-[hidden]{display:none!important}
-button{font:inherit;color:inherit}
-#app{position:fixed;inset:0;background:var(--bg)}
-#app a-scene{display:block;width:100%;height:100%}
-
-.ui{position:fixed;z-index:20}
-#brand{top:calc(12px + env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));display:grid;gap:2px;pointer-events:none;text-shadow:0 1px 8px rgba(0,0,0,.7)}
-#brand small{font:500 11px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2)}
-#brand b{font:700 17px/1.1 var(--f-display);letter-spacing:-.01em}
-#ayuda{top:calc(12px + env(safe-area-inset-top,0px));right:max(16px,env(safe-area-inset-right,0px));max-width:min(46ch,52vw);margin:0;text-align:right;font:400 12px/1.5 var(--f-mono);color:var(--ink-2);pointer-events:none;text-shadow:0 1px 8px rgba(0,0,0,.8)}
-#bar{left:max(16px,env(safe-area-inset-left,0px));right:calc(max(16px,env(safe-area-inset-right,0px)) + 76px);bottom:calc(14px + env(safe-area-inset-bottom,0px));display:flex;flex-wrap:wrap;gap:8px;pointer-events:none}
-#bar>*{pointer-events:auto}
-.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 16px;font:600 15px var(--f-display);color:var(--accent-ink);background:var(--accent);border:1px solid var(--accent);border-radius:3px;cursor:pointer}
-.btn:hover{filter:brightness(1.08)}
-.btn.sec{color:var(--ink);background:rgba(13,20,18,.78);border-color:var(--ink-2)}
-#btn-exit{display:none;left:50%;translate:-50% 0;bottom:calc(10px + env(safe-area-inset-bottom,0px));min-height:40px;padding:8px 14px;font-size:13px}
-body.stereo #btn-exit{display:inline-flex}
-body.stereo #brand,body.stereo #ayuda,body.stereo #bar{display:none}
-
-#loader{position:fixed;inset:0;z-index:40;display:grid;place-content:center;justify-items:center;gap:14px;padding:24px;background:var(--bg);text-align:center;transition:opacity .5s}
-#loader.done{opacity:0;pointer-events:none}
-#loader h1{margin:0;font:700 clamp(26px,6vw,44px)/1.05 var(--f-display);letter-spacing:-.02em}
-#loader .k{font:500 12px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2)}
-#loader-msg{margin:0;max-width:44ch;color:var(--ink-2);font:400 13px/1.5 var(--f-mono)}
-
-#toast{position:fixed;z-index:35;left:50%;top:calc(64px + env(safe-area-inset-top,0px));translate:-50% 0;max-width:min(560px,calc(100vw - 32px));padding:12px 16px;background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--amb);font:400 13px/1.5 var(--f-mono);color:var(--ink);opacity:0;pointer-events:none;transition:opacity .25s}
-#toast.on{opacity:1}
-#vrhint{position:fixed;inset:0;z-index:30;display:none;grid-template-columns:1fr 1fr;pointer-events:none}
-#vrhint.on{display:grid}
-#vrhint div{display:grid;place-content:center;gap:6px;padding:0 9%;text-align:center;background:rgba(13,20,18,.86);font:600 clamp(14px,3.4vw,24px)/1.25 var(--f-display)}
-#vrhint small{font:400 clamp(11px,2.2vw,15px)/1.4 var(--f-mono);color:var(--ink-2)}
-
-@media (max-width:620px){#ayuda{display:none}}
-</style>
-</head>
-<body>
-<div id="app">
-  <a-scene id="scene" embedded loading-screen="enabled: false" background="color: #0b1110" renderer="antialias: true" vr-mode-ui="enabled: true">
-    <a-entity id="rig" position="0 0 0">
-      <a-entity id="cam" camera="fov: 78; near: 0.05; far: 80" look-controls="pointerLockEnabled: false" position="0 1.6 0">
-        <a-entity id="gaze" position="0 0 -1.1" visible="false"
-          cursor="fuse: true; fuseTimeout: 1400"
-          raycaster="objects: .clickable; far: 30; interval: 60; enabled: false"
-          geometry="primitive: ring; radiusInner: 0.013; radiusOuter: 0.022; segmentsTheta: 32"
-          material="color: #E6EEEA; shader: flat; opacity: 0.95; transparent: true; depthTest: false"></a-entity>
-      </a-entity>
-    </a-entity>
-    <a-entity id="mouse" cursor="rayOrigin: mouse" raycaster="objects: .clickable; far: 30"></a-entity>
-  </a-scene>
-</div>
-
-<div id="brand" class="ui"><small>FCEyN · UNLPam</small><b>Sala Virtual de Paleontología</b></div>
-<p id="ayuda" class="ui">Arrastrá para mirar · W A S D para caminar · tocá los círculos del piso para avanzar</p>
-<div id="bar" class="ui">
-  <button type="button" class="btn" id="btn-vr">Anteojos VR (Cardboard)</button>
-  <button type="button" class="btn sec" id="btn-tour">Recorrido guiado</button>
-</div>
-<button type="button" class="btn sec ui" id="btn-exit">Salir del modo VR</button>
-
-<div id="vrhint" aria-live="polite">
-  <div>Colocá el celular en los anteojos<small>Mirá un círculo del piso para caminar hasta él</small></div>
-  <div>Colocá el celular en los anteojos<small>Mirá un círculo del piso para caminar hasta él</small></div>
-</div>
-<div id="toast" role="status"></div>
-<div id="loader">
-  <span class="k">Facultad de Ciencias Exactas y Naturales · UNLPam</span>
-  <h1>Sala Virtual de Paleontología</h1>
-  <p id="loader-msg">Cargando modelos 3D de la sala…</p>
-</div>
-
 <script>
 window.addEventListener('DOMContentLoaded', function() {
   var $=function(s){return document.querySelector(s)};
@@ -108,7 +15,6 @@ window.addEventListener('DOMContentLoaded', function() {
 
   function buildSala(){
     var W=SALA.ancho,L=SALA.atras-SALA.fondo,cz=(SALA.atras+SALA.fondo)/2,H=SALA.alto;
-    var wall='color: #1d3a33; roughness: 1; metalness: 0';
     
     var floor=document.createElement('a-entity');
     floor.setAttribute('geometry','primitive: plane; width: '+W+'; height: '+L);
@@ -144,10 +50,12 @@ window.addEventListener('DOMContentLoaded', function() {
   buildSala();
   buildPiezas();
 
+  // Forzar la desactivación completa de la pantalla de carga al terminar
   setTimeout(function(){
-    $('#loader').classList.add('done');
-  }, 1500);
+    var loader = $('#loader');
+    if(loader) {
+      loader.style.display = 'none';
+    }
+  }, 1000);
 });
 </script>
-</body>
-</html>
