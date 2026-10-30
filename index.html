@@ -1,61 +1,730 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Museo Virtual de Paleontología</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="theme-color" content="#2a1f17">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=DM+Sans:wght@400;500;700&display=swap">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#1f1812;--surface:#2b2118;--ink:#f6efe0;--ink-2:#cdbfa6;--line:#4a3a2b;
+  --gold:#e6c384;--gold-ink:#2a1c0a;
+  --f-serif:'Cormorant Garamond',Georgia,'Times New Roman',serif;
+  --f-sans:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;padding-block:0;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background:var(--bg);color:var(--ink);font:500 15px/1.4 var(--f-sans);overflow:hidden;-webkit-text-size-adjust:100%}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit}
+#app{position:fixed;inset:0;background:var(--bg)}
+#app a-scene{display:block;width:100%;height:100%}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+.ui{position:fixed;z-index:20}
+#brand{top:calc(12px + env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));display:grid;gap:2px;pointer-events:none;text-shadow:0 1px 10px rgba(0,0,0,.85)}
+#brand small{font:500 11px var(--f-sans);letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+#brand b{font:700 24px/1.05 var(--f-serif);letter-spacing:.01em}
+#ayuda{top:calc(12px + env(safe-area-inset-top,0px));right:max(16px,env(safe-area-inset-right,0px));max-width:min(44ch,50vw);margin:0;text-align:right;font:400 12px/1.5 var(--f-sans);color:var(--ink-2);pointer-events:none;text-shadow:0 1px 8px rgba(0,0,0,.9)}
+#bar{left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));display:flex;flex-wrap:wrap;gap:8px;pointer-events:none}
+#bar>*{pointer-events:auto}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 18px;font:700 14px var(--f-sans);letter-spacing:.02em;color:var(--gold-ink);background:var(--gold);border:1px solid var(--gold);border-radius:2px;cursor:pointer}
+.btn:hover{filter:brightness(1.08)}
+.btn.sec{color:var(--ink);background:rgba(31,24,18,.82);border-color:var(--ink-2)}
+.btn.sec:hover{border-color:var(--ink);filter:none}
+#btn-exit{display:none;left:50%;translate:-50% 0;bottom:calc(10px + env(safe-area-inset-bottom,0px));min-height:40px;padding:8px 14px;font-size:13px}
+body.stereo #btn-exit{display:inline-flex}
+body.stereo #brand,body.stereo #ayuda,body.stereo #bar,body.stereo #toast{display:none}
+
+#loader{position:fixed;inset:0;z-index:40;display:grid;place-content:center;justify-items:center;gap:14px;padding:24px;background:var(--bg);text-align:center;transition:opacity .5s}
+#loader.done{opacity:0;pointer-events:none}
+#loader h1{margin:0;font:700 clamp(30px,7vw,54px)/1.02 var(--f-serif);letter-spacing:.01em;text-wrap:balance}
+#loader .k{font:500 11px var(--f-sans);letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
+#loader-msg{margin:0;max-width:44ch;color:var(--ink-2);font:400 13px/1.5 var(--f-sans)}
+#loader-bar{width:min(320px,70vw);height:2px;background:var(--line)}
+#loader-bar i{display:block;height:100%;width:0;background:var(--gold);transition:width .3s}
+
+#toast{position:fixed;z-index:35;left:50%;top:calc(70px + env(safe-area-inset-top,0px));translate:-50% 0;max-width:min(560px,calc(100vw - 32px));padding:12px 16px;background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--gold);font:400 13px/1.5 var(--f-sans);color:var(--ink);opacity:0;pointer-events:none;transition:opacity .25s}
+#toast.on{opacity:1}
+#vrhint{position:fixed;inset:0;z-index:30;display:none;grid-template-columns:1fr 1fr;pointer-events:none}
+#vrhint.on{display:grid}
+#vrhint div{display:grid;place-content:center;gap:6px;padding:0 9%;text-align:center;background:rgba(31,24,18,.88);font:700 clamp(16px,3.6vw,26px)/1.2 var(--f-serif)}
+#vrhint small{font:400 clamp(11px,2.2vw,15px)/1.4 var(--f-sans);color:var(--ink-2)}
+
+@media (max-width:620px){#ayuda{display:none}}
+@media (prefers-reduced-motion:reduce){#loader,#toast{transition:none}}
+</style>
+<!-- A-Frame en el <head>: los elementos anteriores al primer <div> quedan dentro del head -->
+<script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script>
-window.addEventListener('DOMContentLoaded', function() {
-  var $=function(s){return document.querySelector(s)};
-  
-  var PIEZAS=[
-   {glb:'modelo1.glb',codigo:'GHUNLPam 28000',coleccion:'Paleontológica',lado:'izq',z:-4.5,size:0.62,spin:48,tilt:0,yaw:0},
-   {glb:'modelo2.glb',codigo:'PVSJ 585',coleccion:'Ricardo',lado:'der',z:-4.5,size:0.72,spin:0,tilt:28,yaw:90},
-   {glb:'modelo3.glb',codigo:'GHUNLPam 15375',coleccion:'Paleontológica',lado:'izq',z:-10,size:0.6,spin:48,tilt:0,yaw:0},
-   {glb:'modelo4.glb',codigo:'GHUNLPam 29818',coleccion:'Ricardo',lado:'der',z:-10,size:0.72,spin:0,tilt:30,yaw:0},
-   {glb:'modelo5.glb',codigo:'Avipeda 8643',coleccion:'Ricardo',lado:'centro',z:-16.4,size:0.95,spin:0,tilt:28,yaw:0}
-  ];
+/* Respaldo (solo si la copia oficial no llegó): copias espejo de la misma versión. No frena la página. */
+(function(){
+  if(window.AFRAME)return;
+  var urls=['https://cdn.jsdelivr.net/npm/aframe@1.4.2/dist/aframe.min.js','https://unpkg.com/aframe@1.4.2/dist/aframe.min.js'],i=0;
+  (function siguiente(){
+    if(window.AFRAME||i>=urls.length)return;
+    var s=document.createElement('script');
+    s.src=urls[i++];
+    s.onerror=siguiente;
+    s.onload=function(){if(window.__iniciar)window.__iniciar()};
+    document.head.appendChild(s);
+  })();
+})();
+</script>
 
-  var SALA={ancho:7,fondo:-19,atras:3.2,alto:4.2,xPed:2.35};
-  var scene=$('#scene');
+<div id="app">
+  <a-scene id="scene" embedded loading-screen="enabled: false" background="color: #2a1f17" renderer="antialias: true" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: true">
+    <a-entity id="rig" position="0 0 1.5">
+      <a-entity id="cam" camera="fov: 75; near: 0.05; far: 80" look-controls="pointerLockEnabled: false" position="0 1.6 0">
+        <a-entity id="gaze" position="0 0 -1.1" visible="false"
+          cursor="fuse: true; fuseTimeout: 1500"
+          raycaster="objects: .clickable; far: 40; interval: 80; enabled: false"
+          geometry="primitive: ring; radiusInner: 0.013; radiusOuter: 0.022; segmentsTheta: 32"
+          material="color: #ffffff; shader: flat; opacity: 0.95; transparent: true; depthTest: false"
+          animation__fuse="property: scale; from: 1 1 1; to: 0.3 0.3 0.3; dur: 1500; easing: linear; startEvents: fusing"
+          animation__reset="property: scale; to: 1 1 1; dur: 120; easing: easeOutQuad; startEvents: mouseleave, click"></a-entity>
+      </a-entity>
+    </a-entity>
+    <a-entity id="mouse" cursor="rayOrigin: mouse" raycaster="objects: .clickable; far: 40"></a-entity>
+  </a-scene>
+</div>
 
-  function buildSala(){
-    var W=SALA.ancho,L=SALA.atras-SALA.fondo,cz=(SALA.atras+SALA.fondo)/2,H=SALA.alto;
-    
-    var floor=document.createElement('a-entity');
-    floor.setAttribute('geometry','primitive: plane; width: '+W+'; height: '+L);
-    floor.setAttribute('material','color: #2c2925; roughness: 0.92');
-    floor.setAttribute('position','0 0 '+cz);
-    floor.setAttribute('rotation','-90 0 0');
-    scene.appendChild(floor);
+<div id="brand" class="ui"><small>FCEyN · UNLPam</small><b>Museo Virtual de Paleontología</b></div>
+<p id="ayuda" class="ui">Arrastrá para mirar · W A S D para caminar · tocá los anillos de luz del piso para ir a una pieza</p>
+<div id="bar" class="ui">
+  <button type="button" class="btn" id="btn-vr">Anteojos VR (Cardboard)</button>
+  <button type="button" class="btn sec" id="btn-tour">Recorrido guiado</button>
+</div>
+<button type="button" class="btn sec ui" id="btn-exit">Salir del modo VR</button>
 
-    var light=document.createElement('a-entity');
-    light.setAttribute('light','type: hemisphere; color: #cfe8e0; groundColor: #2a2118; intensity: 1.2');
-    scene.appendChild(light);
+<div id="vrhint" aria-live="polite">
+  <div>Colocá el celular en los anteojos<small>El recorrido empieza solo · mirá un anillo de luz 1,5 s para ir hasta él</small></div>
+  <div>Colocá el celular en los anteojos<small>El recorrido empieza solo · mirá un anillo de luz 1,5 s para ir hasta él</small></div>
+</div>
+<div id="toast" role="status"></div>
+<div id="loader">
+  <span class="k">Facultad de Ciencias Exactas y Naturales · UNLPam</span>
+  <h1>Museo Virtual de Paleontología</h1>
+  <div id="loader-bar"><i></i></div>
+  <p id="loader-msg">Preparando la sala…</p>
+</div>
+
+<script>
+(function(){
+'use strict';
+var $=function(s){return document.querySelector(s)};
+var loaderEl=$('#loader'),loaderMsg=$('#loader-msg');
+
+function iniciarSala(){
+try{window.createImageBitmap=undefined}catch(e){}
+var THREE=AFRAME.THREE;
+var scene=$('#scene'),rig=$('#rig'),cam=$('#cam'),gaze=$('#gaze'),mouse=$('#mouse');
+
+/* ---------- 1. DATOS ----------
+   Los .glb están en la misma carpeta que este HTML. Completá cientifico, periodo, procedencia y tamano cuando los tengas. */
+var PIEZAS=[
+ {glb:'./modelo1.glb',codigo:'GHUNLPam 28000',coleccion:'Colección Paleontológica',lado:'izq',z:-3,size:0.6,spin:48,tilt:0,yaw:0},
+ {glb:'./modelo2.glb',codigo:'PVSJ 585',coleccion:'Colección Ricardo',lado:'der',z:-3,size:0.68,spin:0,tilt:28,yaw:90},
+ {glb:'./modelo3.glb',codigo:'GHUNLPam 15375',coleccion:'Colección Paleontológica',lado:'izq',z:-7,size:0.6,spin:48,tilt:0,yaw:0},
+ {glb:'./modelo4.glb',codigo:'GHUNLPam 29818',coleccion:'Colección Ricardo',lado:'der',z:-7,size:0.68,spin:0,tilt:30,yaw:0},
+ {glb:'./modelo5.glb',codigo:'Avipeda 8643',coleccion:'Colección Ricardo',lado:'centro',z:-10.5,size:0.85,spin:0,tilt:28,yaw:0}
+].map(function(p){return Object.assign({cientifico:'',periodo:'',procedencia:'',tamano:''},p)});
+
+/* sala de 11 x 15,5 m: las piezas quedan a 3-5 m entre sí */
+var W=5.5,ZF=3,ZB=-12.5,H=4.2,TOP=1.04,XPED=2.6,SPEED=3.4;
+var GOLD='#e6c384',SERIF="'Cormorant Garamond',Georgia,serif",SANS="'DM Sans',system-ui,sans-serif";
+var stereoOn=false,moving=false;
+var world=document.createElement('a-entity');
+scene.appendChild(world);
+
+/* ---------- 2. UTILIDADES ---------- */
+function E(tag,attrs,parent){
+  var el=document.createElement(tag),k;
+  for(k in attrs)el.setAttribute(k,attrs[k]);
+  (parent||world).appendChild(el);
+  return el;
+}
+function P(x,y,z){return x+' '+y+' '+z}
+function sleep(ms){return new Promise(function(r){setTimeout(r,ms)})}
+var toastT=0;
+function toast(msg,ms){
+  var t=$('#toast');
+  t.textContent=msg;t.classList.add('on');
+  clearTimeout(toastT);
+  toastT=setTimeout(function(){t.classList.remove('on')},ms||4500);
+}
+function M(color,rough,metal){return 'color: '+color+'; roughness: '+rough+'; metalness: '+(metal||0)+'; side: double'}
+function bx(w,h,d,pos,color,parent,rough,metal){
+  return E('a-entity',{geometry:'primitive: box; width: '+w+'; height: '+h+'; depth: '+d,material:M(color,rough==null?0.85:rough,metal),position:pos},parent);
+}
+function pl(w,h,pos,rot,color,parent,rough,metal){
+  return E('a-entity',{geometry:'primitive: plane; width: '+w+'; height: '+h,material:M(color,rough==null?0.9:rough,metal),position:pos,rotation:rot},parent);
+}
+function cy(r,h,pos,color,parent,rough,metal){
+  return E('a-entity',{geometry:'primitive: cylinder; radius: '+r+'; height: '+h+'; segmentsRadial: 36',material:M(color,rough==null?0.6:rough,metal),position:pos},parent);
+}
+
+/* Plano con dibujo de canvas: carteles, paredes de estratos, piso de lajas. No depende de imágenes externas.
+   lit:true = reacciona a las luces (paredes y piso); lit:false = se ve siempre igual (carteles). */
+AFRAME.registerComponent('cvs',{
+  schema:{w:{default:1},h:{default:1},lit:{default:false},rough:{default:0.9},rx:{default:1},ry:{default:1}},
+  init:function(){
+    var d=this.data,cv=this.el.__cv,t=new THREE.CanvasTexture(cv),m;
+    if(THREE.SRGBColorSpace)t.colorSpace=THREE.SRGBColorSpace;
+    else if(THREE.sRGBEncoding)t.encoding=THREE.sRGBEncoding;
+    t.anisotropy=8;
+    if(d.rx!==1||d.ry!==1){t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(d.rx,d.ry)}
+    m=d.lit?new THREE.MeshStandardMaterial({map:t,roughness:d.rough,metalness:0,side:THREE.DoubleSide})
+            :new THREE.MeshBasicMaterial({map:t,transparent:true,side:THREE.DoubleSide});
+    this.el.setObject3D('mesh',new THREE.Mesh(new THREE.PlaneGeometry(d.w,d.h),m));
   }
-
-  function buildPiezas(){
-    PIEZAS.forEach(function(p, i){
-      var x = p.lado==='izq'?-SALA.xPed:p.lado==='der'?SALA.xPed:0;
-      
-      var pedestal = document.createElement('a-entity');
-      pedestal.setAttribute('geometry','primitive: box; width: 0.7; height: 1; depth: 0.7');
-      pedestal.setAttribute('material','color: #d9d3c5');
-      pedestal.setAttribute('position', x+' 0.5 '+p.z);
-      scene.appendChild(pedestal);
-
-      var model = document.createElement('a-entity');
-      model.setAttribute('gltf-model', 'url('+p.glb+')');
-      model.setAttribute('position', x+' 1.1 '+p.z);
-      model.setAttribute('scale', p.size+' '+p.size+' '+p.size);
-      model.setAttribute('class', 'clickable');
-      scene.appendChild(model);
-    });
-  }
-
-  buildSala();
-  buildPiezas();
-
-  // Forzar la desactivación completa de la pantalla de carga al terminar
-  setTimeout(function(){
-    var loader = $('#loader');
-    if(loader) {
-      loader.style.display = 'none';
-    }
-  }, 1000);
 });
+function cvsEntity(canvas,w,h,pos,rot,parent,extra){
+  var el=document.createElement('a-entity');
+  el.__cv=canvas;
+  el.setAttribute('cvs','w: '+w+'; h: '+h+(extra?'; '+extra:''));
+  if(pos)el.setAttribute('position',pos);
+  if(rot)el.setAttribute('rotation',rot);
+  (parent||world).appendChild(el);
+  return el;
+}
+function mk(w,h){var c=document.createElement('canvas');c.width=w;c.height=h;return c}
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;var t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function wrap(ctx,text,x,y,maxW,lh){
+  var words=text.split(' '),line='',i,t;
+  for(i=0;i<words.length;i++){
+    t=line?line+' '+words[i]:words[i];
+    if(ctx.measureText(t).width>maxW&&line){ctx.fillText(line,x,y);y+=lh;line=words[i]}else line=t;
+  }
+  if(line){ctx.fillText(line,x,y);y+=lh}
+  return y;
+}
+function rr(ctx,x,y,w,h,r){
+  ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();
+}
+
+/* ---------- 3. TEXTURAS DIBUJADAS ---------- */
+/* Pared de estratos: capas de roca sedimentaria con amonites incrustados y un zócalo de piedra */
+var CAPAS=['#d9ae7e','#bd7c4c','#e6cb9f','#a2623d','#cf9558','#eddfba','#b06e43','#86512f','#dcb47f'];
+function ammonite(g,x,y,R){
+  var t,rr2;
+  g.beginPath();
+  for(t=0;t<=13;t+=0.15){rr2=R*t/13;g.lineTo(x+Math.cos(t)*rr2,y+Math.sin(t)*rr2)}
+  g.stroke();
+  g.beginPath();g.arc(x,y,R*1.05,0,6.283);g.stroke();
+}
+function strataCv(wm,hm,seed){
+  var ppm=100,w=Math.round(wm*ppm),h=Math.round(hm*ppm),c=mk(w,h),g=c.getContext('2d'),r=rng(seed),y=0,x,i,bh,amp,ph,fr,gr;
+  g.fillStyle=CAPAS[0];g.fillRect(0,0,w,h);
+  while(y<h){
+    bh=12+r()*44;amp=1+r()*5;ph=r()*6.28;fr=0.004+r()*0.008;
+    g.fillStyle=CAPAS[Math.floor(r()*CAPAS.length)];
+    g.beginPath();g.moveTo(0,h);
+    for(x=0;x<=w;x+=10)g.lineTo(x,y+Math.sin(x*fr+ph)*amp+Math.sin(x*fr*2.7+ph)*amp*0.4);
+    g.lineTo(w,h);g.closePath();g.fill();
+    y+=bh;
+  }
+  for(i=0;i<3200;i++){
+    g.fillStyle=r()<0.5?'rgba(60,35,20,0.10)':'rgba(255,240,210,0.10)';
+    g.fillRect(r()*w,r()*h,1+r()*3,1+r()*2);
+  }
+  g.lineWidth=2;
+  for(i=0;i<Math.max(3,Math.round(wm/2.6));i++){
+    g.strokeStyle='rgba(255,243,215,0.42)';
+    ammonite(g,60+r()*(w-120),h*0.3+r()*h*0.45,14+r()*14);
+  }
+  gr=g.createLinearGradient(0,0,0,h);
+  gr.addColorStop(0,'rgba(255,240,220,0.0)');gr.addColorStop(1,'rgba(50,28,14,0.35)');
+  g.fillStyle=gr;g.fillRect(0,0,w,h);
+  /* zócalo de bloques de piedra */
+  g.fillStyle='#5a4130';g.fillRect(0,h-80,w,80);
+  g.fillStyle='#352417';g.fillRect(0,h-84,w,5);
+  g.fillStyle='rgba(0,0,0,0.28)';
+  for(x=0;x<w;x+=90+(x%3)*7)g.fillRect(x,h-80,3,80);
+  return c;
+}
+/* Piso de lajas de piedra */
+function floorCv(){
+  var S=1024,c=mk(S,S),g=c.getContext('2d'),r=rng(7),PAL=['#bcab90','#ad9c83','#c8baa1','#a59578','#b6a58c'],hs=[256,192,288,288],y=0,k,j,n,ws,tot,x,wd,i;
+  g.fillStyle='#6d604e';g.fillRect(0,0,S,S);
+  for(k=0;k<hs.length;k++){
+    n=3+Math.floor(r()*2);ws=[];tot=0;
+    for(j=0;j<n;j++){ws.push(0.6+r());tot+=ws[j]}
+    x=0;
+    for(j=0;j<n;j++){
+      wd=(j===n-1)?S-x:Math.round(ws[j]/tot*S);
+      g.fillStyle=PAL[Math.floor(r()*PAL.length)];
+      g.fillRect(x+3,y+3,wd-6,hs[k]-6);
+      for(i=0;i<90;i++){
+        g.fillStyle=r()<0.5?'rgba(70,52,34,0.09)':'rgba(255,245,225,0.10)';
+        g.fillRect(x+4+r()*(wd-10),y+4+r()*(hs[k]-10),2+r()*5,2+r()*4);
+      }
+      x+=wd;
+    }
+    y+=hs[k];
+  }
+  return c;
+}
+function plaqueCv(p){
+  var c=mk(512,240),g=c.getContext('2d'),s=54;
+  g.fillStyle='#f6f0e2';g.fillRect(0,0,512,240);
+  g.strokeStyle='#a9803c';g.lineWidth=4;g.strokeRect(10,10,492,220);
+  g.textAlign='center';g.fillStyle='#2b1d16';
+  do{g.font='700 '+s+'px '+SERIF;s-=2}while(g.measureText(p.codigo).width>440&&s>24);
+  g.fillText(p.codigo,256,108);
+  g.font='500 26px '+SANS;g.fillStyle='#6b5a46';g.fillText(p.coleccion,256,156);
+  g.font='500 19px '+SANS;g.fillStyle='#8a7a64';g.fillText('FCEyN · UNLPam',256,205);
+  return c;
+}
+function cardCv(p){
+  var c=mk(768,460),g=c.getContext('2d'),rows=[['Nombre científico',p.cientifico],['Período',p.periodo],['Procedencia',p.procedencia],['Tamaño',p.tamano]],i,y;
+  g.fillStyle='rgba(38,27,19,0.96)';rr(g,4,4,760,452,18);g.fill();
+  g.strokeStyle=GOLD;g.lineWidth=3;rr(g,4,4,760,452,18);g.stroke();
+  g.textAlign='left';
+  g.fillStyle='#f6efe0';g.font='700 56px '+SERIF;g.fillText(p.codigo,44,86);
+  g.fillStyle=GOLD;g.font='500 24px '+SANS;g.fillText(p.coleccion.toUpperCase(),44,128);
+  g.fillStyle='#5a4733';g.fillRect(44,150,680,2);
+  for(i=0;i<rows.length;i++){
+    y=210+i*58;
+    g.fillStyle='#cdbfa6';g.font='500 20px '+SANS;g.fillText(rows[i][0].toUpperCase(),44,y);
+    if(rows[i][1]){g.fillStyle='#f6efe0';g.font='600 32px '+SERIF}else{g.fillStyle='#a39579';g.font='italic 500 30px '+SERIF}
+    g.fillText(rows[i][1]||'Por completar',320,y+2);
+  }
+  g.fillStyle='#a39579';g.font='400 19px '+SANS;g.fillText('Museo Virtual · FCEyN · UNLPam',44,436);
+  return c;
+}
+function bannerCv(){
+  var c=mk(1600,300),g=c.getContext('2d');
+  g.textAlign='center';
+  g.shadowColor='rgba(40,22,10,0.7)';g.shadowBlur=14;g.shadowOffsetY=4;
+  g.fillStyle='#fff4dc';g.font='700 118px '+SERIF;g.fillText('Museo de Paleontología',800,120);
+  g.shadowBlur=8;
+  g.fillStyle='#ffe9bd';g.font='500 40px '+SANS;g.fillText('Facultad de Ciencias Exactas y Naturales · UNLPam',800,200);
+  g.shadowColor='transparent';
+  g.fillStyle='#ffe9bd';g.fillRect(660,226,280,4);
+  return c;
+}
+function timelineCv(){
+  var c=mk(2000,160),g=c.getContext('2d'),sw=1880/4,i,x,seg=[
+    ['Precámbrico','4.540 – 539 Ma','#6b5240','#fff4dc'],
+    ['Paleozoico','539 – 252 Ma','#4f8070','#fff4dc'],
+    ['Mesozoico','252 – 66 Ma','#c9812f','#2b1d16'],
+    ['Cenozoico','66 Ma – hoy','#e0cb86','#2b1d16']];
+  g.fillStyle='#f6ecd6';g.fillRect(0,0,2000,160);
+  g.strokeStyle='#4a3220';g.lineWidth=4;g.strokeRect(6,6,1988,148);
+  g.textAlign='left';g.fillStyle='#4a3220';g.font='600 21px '+SANS;
+  g.fillText('TIEMPO GEOLÓGICO · LOS TRAMOS NO ESTÁN A ESCALA · Ma = millones de años',60,38);
+  for(i=0;i<4;i++){
+    x=60+i*sw;
+    g.fillStyle=seg[i][2];g.fillRect(x,52,sw-6,88);
+    g.textAlign='center';g.fillStyle=seg[i][3];
+    g.font='700 40px '+SERIF;g.fillText(seg[i][0],x+(sw-6)/2,92);
+    g.font='500 22px '+SANS;g.fillText(seg[i][1],x+(sw-6)/2,124);
+  }
+  return c;
+}
+function gridCv(){
+  var c=mk(960,640),g=c.getContext('2d'),i,j,marcadas=[[1,1],[3,2],[4,0],[2,3]],cols='ABCDEF';
+  g.fillStyle='#f6ecd6';g.fillRect(0,0,960,640);
+  g.strokeStyle='#a9803c';g.lineWidth=5;g.strokeRect(22,22,916,596);
+  g.textAlign='left';g.fillStyle='#2b1d16';g.font='700 56px '+SERIF;g.fillText('Cuadrícula de excavación',60,100);
+  for(j=0;j<4;j++)for(i=0;i<6;i++){
+    g.fillStyle=(i+j)%2?'#e8d6b0':'#efe0bf';g.fillRect(60+i*100,170+j*100,100,100);
+  }
+  marcadas.forEach(function(m){
+    g.fillStyle='rgba(169,128,60,0.35)';g.fillRect(60+m[0]*100,170+m[1]*100,100,100);
+    g.strokeStyle='#4a3220';g.lineWidth=5;g.beginPath();
+    g.moveTo(60+m[0]*100+30,170+m[1]*100+30);g.lineTo(60+m[0]*100+70,170+m[1]*100+70);
+    g.moveTo(60+m[0]*100+70,170+m[1]*100+30);g.lineTo(60+m[0]*100+30,170+m[1]*100+70);g.stroke();
+  });
+  g.strokeStyle='#4a3220';g.lineWidth=2;
+  for(i=0;i<=6;i++){g.beginPath();g.moveTo(60+i*100,170);g.lineTo(60+i*100,570);g.stroke()}
+  for(j=0;j<=4;j++){g.beginPath();g.moveTo(60,170+j*100);g.lineTo(660,170+j*100);g.stroke()}
+  g.fillStyle='#4a3220';g.font='600 26px '+SANS;g.textAlign='center';
+  for(i=0;i<6;i++)g.fillText(cols[i],110+i*100,152);
+  g.textAlign='right';
+  for(j=0;j<4;j++)g.fillText(String(j+1),46,230+j*100);
+  g.textAlign='left';g.fillStyle='#4a3d30';g.font='400 26px '+SANS;
+  wrap(g,'Cada cuadro mide 1 m². Los hallazgos (X) se registran por cuadro antes de retirarlos.',700,190,220,36);
+  return c;
+}
+function capasCv(){
+  var c=mk(960,640),g=c.getContext('2d'),y;
+  g.fillStyle='#f6ecd6';g.fillRect(0,0,960,640);
+  g.strokeStyle='#a9803c';g.lineWidth=5;g.strokeRect(22,22,916,596);
+  g.textAlign='left';g.fillStyle='#2b1d16';g.font='700 62px '+SERIF;g.fillText('Capas del tiempo',60,104);
+  g.fillStyle='#a9803c';g.fillRect(60,128,120,4);
+  g.fillStyle='#4a3d30';g.font='400 34px '+SANS;
+  y=wrap(g,'Las rocas sedimentarias se forman en capas. Las más profundas son las más antiguas.',60,196,840,48);
+  wrap(g,'Los fósiles que guarda cada capa muestran cómo era la vida en ese momento.',60,y+16,840,48);
+  g.fillStyle='#8a7a64';g.font='500 20px '+SANS;g.fillText('FCEyN · UNLPam',60,590);
+  return c;
+}
+
+/* ---------- 4. SALA ---------- */
+var OBST=[]; /* [x,z,radio] */
+function buildSala(){
+  var L=ZF-ZB,cz=(ZF+ZB)/2,z,g;
+  /* luz cálida pareja: la sala se ve completa, sin zonas negras */
+  E('a-entity',{light:'type: ambient; color: #fff1dc; intensity: 0.55'});
+  E('a-entity',{light:'type: hemisphere; color: #fff6ea; groundColor: #8a6a4a; intensity: 0.4'});
+  /* piso de lajas de piedra */
+  cvsEntity(floorCv(),W*2,L,P(0,0,cz),'-90 0 0',world,'lit: true; rough: 0.95; rx: '+(W*2/3.2)+'; ry: '+(L/3.2));
+  /* paredes de estratos de roca */
+  cvsEntity(strataCv(L,H,11),L,H,P(-W,H/2,cz),'0 90 0',world,'lit: true; rough: 1');
+  cvsEntity(strataCv(L,H,12),L,H,P(W,H/2,cz),'0 -90 0',world,'lit: true; rough: 1');
+  cvsEntity(strataCv(W*2,H,13),W*2,H,P(0,H/2,ZB),'0 0 0',world,'lit: true; rough: 1');
+  cvsEntity(strataCv(W*2,H,14),W*2,H,P(0,H/2,ZF),'0 180 0',world,'lit: true; rough: 1');
+  /* techo claro con vigas de madera */
+  pl(W*2,L,P(0,H,cz),'90 0 0','#efe6d4',world,1,0);
+  for(z=ZF-1.5;z>ZB;z-=3)bx(W*2,0.22,0.32,P(0,H-0.11,z),'#4a3220',world,0.8);
+  /* tarima de piedra para la pieza central y cartel de la sala */
+  cy(1.35,0.12,P(0,0.06,-10.5),'#cdbfa5',world,0.7,0);
+  cvsEntity(bannerCv(),5.2,0.975,P(0,3.15,ZB+0.03),null);
+  /* línea del tiempo geológico en la pared izquierda */
+  g=E('a-entity',{position:P(-W+0.04,2.55,-5),rotation:'0 90 0'});
+  bx(10.2,1.0,0.05,'0 0 0','#4a3220',g,0.7);
+  cvsEntity(timelineCv(),10,0.8,'0 0 0.03',null,g);
+  /* paneles de campo en la pared derecha */
+  [[-3,gridCv()],[-7,capasCv()]].forEach(function(q){
+    var f=E('a-entity',{position:P(W-0.04,2.1,q[0]),rotation:'0 -90 0'});
+    bx(2.64,1.8,0.05,'0 0 0','#4a3220',f,0.7);
+    cvsEntity(q[1],2.5,1.667,'0 0 0.03',null,f);
+  });
+  /* bancos de madera junto a la entrada */
+  [-2.4,2.4].forEach(function(x){
+    var b=E('a-entity',{position:P(x,0,1.1)});
+    bx(1.5,0.08,0.5,P(0,0.46,0),'#7a5632',b,0.8);
+    bx(0.08,0.44,0.44,P(-0.62,0.22,0),'#5e4226',b,0.8);
+    bx(0.08,0.44,0.44,P(0.62,0.22,0),'#5e4226',b,0.8);
+    OBST.push([x,1.1,0.85]);
+  });
+  /* cajones de campo en los rincones del fondo */
+  [-4.55,4.55].forEach(function(x){
+    var b=E('a-entity',{position:P(x,0,-11.5)});
+    bx(0.95,0.6,0.95,P(0,0.3,0),'#8a6a42',b,0.9);
+    bx(0.7,0.5,0.7,P(0,0.85,0),'#7a5a36',b,0.9);
+    bx(0.97,0.06,0.97,P(0,0.57,0),'#5e4226',b,0.9);
+    OBST.push([x,-11.5,0.8]);
+  });
+}
+
+/* ---------- 5. PEDESTALES Y PIEZAS ---------- */
+var EX=[],ST=[];
+function buildPieza(p,i){
+  var sx=p.lado==='izq'?-XPED:p.lado==='der'?XPED:0,dir=p.lado==='izq'?1:p.lado==='der'?-1:0;
+  var g=E('a-entity',{position:P(sx,0,p.z)});
+  /* plinto cilíndrico de travertino con base y tapa */
+  cy(0.5,0.12,P(0,0.06,0),'#d6c9b0',g,0.55,0);
+  cy(0.405,0.02,P(0,0.13,0),'#b8924a',g,0.35,0.6);
+  cy(0.4,0.86,P(0,0.55,0),'#efe6d2',g,0.5,0);
+  cy(0.46,0.06,P(0,1.01,0),'#f7f0e0',g,0.45,0);
+  var plPos,plRot,cPos,cRot;
+  if(dir===1){plPos=P(0.412,0.55,0);plRot='0 90 0';cPos=P(0.6,2.05,0);cRot='0 90 0'}
+  else if(dir===-1){plPos=P(-0.412,0.55,0);plRot='0 -90 0';cPos=P(-0.6,2.05,0);cRot='0 -90 0'}
+  else{plPos=P(0,0.55,0.412);plRot='0 0 0';cPos=P(0,2.05,0.6);cRot='0 0 0'}
+  cvsEntity(plaqueCv(p),0.3,0.14,plPos,plRot,g);
+  /* foco de exposición en el techo, justo sobre el plinto y apuntando hacia abajo */
+  E('a-entity',{id:'tg'+i,position:P(0,TOP,0)},g);
+  E('a-entity',{light:'type: spot; color: #ffe6c0; intensity: 0.8; angle: 50; penumbra: 0.5; decay: 1; distance: 8; target: #tg'+i,position:P(0,H-0.25,0)},g);
+  cy(0.1,0.2,P(0,H-0.1,0),'#2a2018',g,0.5,0.4);
+  E('a-entity',{geometry:'primitive: circle; radius: 0.08',material:'shader: flat; color: #fff1d6; side: double',position:P(0,H-0.205,0),rotation:'90 0 0'},g);
+  OBST.push([sx,p.z,0.6]);
+  var holder=E('a-entity',{position:P(0,TOP,0)},g);
+  var tilter=E('a-entity',{},holder);
+  var yawer=E('a-entity',{},tilter);
+  var model=E('a-entity',{'class':'clickable pieza'},yawer);
+  var card=cvsEntity(cardCv(p),1.1,0.66,cPos,cRot,g);
+  card.setAttribute('visible',false);
+  var ex={p:p,i:i,g:g,holder:holder,tilter:tilter,yawer:yawer,model:model,card:card,pinned:false,tourFocus:false,loaded:false,x:sx,z:p.z};
+  EX.push(ex);
+  model.addEventListener('mouseenter',function(){showCard(ex,true)});
+  model.addEventListener('mouseleave',function(){showCard(ex,ex.pinned||ex.tourFocus)});
+  model.addEventListener('click',function(){ex.pinned=!ex.pinned;showCard(ex,ex.pinned||ex.tourFocus)});
+  model.addEventListener('model-loaded',function(){onModel(ex)});
+  model.addEventListener('model-error',function(){onModelError(ex)});
+  /* estación del piso: a 1,3 m del plinto, mirando la pieza */
+  var st=dir===0?{x:0,z:-8.4}:{x:sx+dir*1.3,z:p.z};
+  st.yaw=Math.atan2(-(sx-st.x),-(p.z-st.z));
+  st.p=i;ST.push(st);
+}
+function buildEstaciones(){
+  ST.forEach(function(s){
+    /* anillo fino de luz en el piso; el disco casi invisible agranda la zona de toque y de mirada */
+    var d=E('a-entity',{'class':'clickable estacion',geometry:'primitive: circle; radius: 0.5; segments: 32',material:'shader: flat; color: #fff4d6; opacity: 0.08; transparent: true; side: double; depthWrite: false',position:P(s.x,0.02,s.z),rotation:'-90 0 0'});
+    E('a-entity',{geometry:'primitive: ring; radiusInner: 0.34; radiusOuter: 0.4; segmentsTheta: 48',material:'shader: flat; color: #fff4d6; opacity: 0.95; transparent: true; side: double',position:'0 0 0.003',
+      animation__pulse:'property: material.opacity; from: 0.55; to: 1; dir: alternate; loop: true; dur: 1400; easing: easeInOutSine'},d);
+    E('a-entity',{geometry:'primitive: ring; radiusInner: 0.405; radiusOuter: 0.43; segmentsTheta: 48',material:'shader: flat; color: #4a3220; opacity: 0.7; transparent: true; side: double',position:'0 0 0.002'},d);
+    E('a-entity',{geometry:'primitive: circle; radius: 0.05; segments: 20',material:'shader: flat; color: #fff4d6; opacity: 0.9; transparent: true; side: double',position:'0 0 0.003'},d);
+    d.addEventListener('click',function(){tourStop();irA(s,900)});
+  });
+}
+
+/* ---------- 6. CARGA DE MODELOS ---------- */
+var qi=0,nOk=0,nErr=0,errs=[];
+function loaderUpdate(){
+  var tot=PIEZAS.length;
+  if(loaderEl){
+    loaderMsg.textContent='Cargando piezas… '+nOk+' de '+tot+(nErr?' ('+nErr+' sin encontrar)':'');
+    $('#loader-bar i').style.width=((nOk+nErr)/tot*100)+'%';
+  }
+}
+function loaderDone(){
+  var l=loaderEl;
+  if(!l)return;
+  loaderEl=null;
+  l.classList.add('done');
+  l.style.pointerEvents='none';
+  setTimeout(function(){l.style.display='none';if(l.parentNode)l.parentNode.removeChild(l)},600);
+}
+function loadNext(){
+  if(qi>=EX.length)return;
+  var ex=EX[qi++];
+  ex.model.setAttribute('gltf-model','url('+ex.p.glb+')');
+}
+function onModel(ex){
+  var el=ex.model,obj=el.getObject3D('mesh'),p=ex.p;
+  if(!obj)return;
+  el.object3D.scale.set(1,1,1);el.object3D.position.set(0,0,0);
+  obj.traverse(function(o){
+    if(!o.isMesh)return;
+    o.el=el; /* para que el cursor reconozca la pieza al apuntar a cualquier parte de la malla */
+    (Array.isArray(o.material)?o.material:[o.material]).forEach(function(m){if(m){m.side=THREE.DoubleSide;m.needsUpdate=true}});
+  });
+  /* medir la pieza con todo sin rotar y apoyar su base en el plinto */
+  ex.holder.object3D.updateMatrixWorld(true);
+  var box=new THREE.Box3().setFromObject(obj),wp=new THREE.Vector3();
+  el.object3D.getWorldPosition(wp);
+  var mn=box.min.clone().sub(wp),mx3=box.max.clone().sub(wp);
+  var sz=new THREE.Vector3(mx3.x-mn.x,mx3.y-mn.y,mx3.z-mn.z),cx=(mx3.x+mn.x)/2,cz=(mx3.z+mn.z)/2;
+  var mx=Math.max(sz.x,sz.y,sz.z)||1,s=1/mx;
+  el.object3D.scale.setScalar(s);
+  el.object3D.position.set(-cx*s,-mn.y*s,-cz*s);
+  ex.yawer.object3D.rotation.y=THREE.MathUtils.degToRad(p.yaw);
+  ex.tilter.object3D.rotation.x=THREE.MathUtils.degToRad(p.tilt);
+  ex.tilter.object3D.scale.setScalar(p.size);
+  var rot=new THREE.Matrix4().makeRotationX(THREE.MathUtils.degToRad(p.tilt)).multiply(new THREE.Matrix4().makeRotationY(THREE.MathUtils.degToRad(p.yaw)));
+  var hx=sz.x*s/2,hz=sz.z*s/2,hy=sz.y*s,minY=1e9,maxY=-1e9,v=new THREE.Vector3(),a,b,d;
+  for(a=-1;a<=1;a+=2)for(b=0;b<=1;b++)for(d=-1;d<=1;d+=2){
+    v.set(a*hx,b*hy,d*hz).applyMatrix4(rot).multiplyScalar(p.size);
+    if(v.y<minY)minY=v.y;
+    if(v.y>maxY)maxY=v.y;
+  }
+  ex.tilter.object3D.position.y=-minY+0.004;
+  ex.card.object3D.position.y=Math.max(1.8,TOP+(maxY-minY)+0.55);
+  if(p.spin>0)ex.holder.setAttribute('animation__spin','property: rotation; from: 0 0 0; to: 0 360 0; dur: '+(p.spin*1000)+'; easing: linear; loop: true');
+  ex.loaded=true;
+  nOk++;
+  loaderUpdate();
+  if(nOk>=1||nOk+nErr>=EX.length)loaderDone();
+  loadNext();
+}
+/* si un archivo falta, el plinto muestra un contorno ámbar donde irá la pieza */
+function marcador(ex){
+  var s=ex.p.size,h=s*0.55;
+  E('a-entity',{geometry:'primitive: box; width: '+s+'; height: '+h+'; depth: '+(s*0.6),material:'shader: flat; color: #c9812f; wireframe: true; opacity: 0.85; transparent: true',position:P(0,h/2+0.004,0)},ex.holder);
+}
+function onModelError(ex){
+  nErr++;errs.push(ex.p.glb);
+  loaderUpdate();
+  marcador(ex);
+  toast('No se encontró: '+errs.join(', ')+'. Guardá los .glb en la misma carpeta que este HTML.',14000);
+  if(nOk+nErr>=EX.length)loaderDone();
+  loadNext();
+}
+
+/* ---------- 7. TARJETAS ---------- */
+function showCard(ex,on){ex.card.setAttribute('visible',!!on)}
+
+/* ---------- 8. MOVIMIENTO ---------- */
+var moveId=0;
+function irA(s,dur){
+  return new Promise(function(res){
+    var id=++moveId,p=rig.object3D.position,r=rig.object3D.rotation,x0=p.x,z0=p.z,y0=r.y,dy=s.yaw-y0,lc=null,ly0=0,lp0=0,D=dur||900,t0=performance.now();
+    while(dy>Math.PI)dy-=2*Math.PI;
+    while(dy<-Math.PI)dy+=2*Math.PI;
+    /* en pantalla normal, también se vuelve a centrar la mirada de arrastre */
+    try{if(!stereoOn){lc=cam.components['look-controls'];ly0=lc.yawObject.rotation.y;lp0=lc.pitchObject.rotation.x}}catch(e){lc=null}
+    moving=true;
+    (function paso(now){
+      if(id!==moveId){res(false);return}
+      var k=Math.min(1,(now-t0)/D),e=k*k*(3-2*k);
+      p.x=x0+(s.x-x0)*e;p.z=z0+(s.z-z0)*e;r.y=y0+dy*e;
+      if(lc){try{lc.yawObject.rotation.y=ly0*(1-e);lc.pitchObject.rotation.x=lp0*(1-e)}catch(err){}}
+      if(k<1)requestAnimationFrame(paso);else{moving=false;res(true)}
+    })(t0);
+  });
+}
+var INICIO={x:0,z:1.5,yaw:0};
+
+/* caminar con el teclado, con paredes y obstáculos sólidos */
+var keys={};
+window.addEventListener('keydown',function(e){keys[e.code]=true});
+window.addEventListener('keyup',function(e){keys[e.code]=false});
+window.addEventListener('blur',function(){keys={}});
+function limitar(p){
+  var i,o,dx,dz,d;
+  p.x=Math.max(-(W-0.5),Math.min(W-0.5,p.x));
+  p.z=Math.max(ZB+0.8,Math.min(ZF-0.5,p.z));
+  for(i=0;i<OBST.length;i++){
+    o=OBST[i];dx=p.x-o[0];dz=p.z-o[1];d=Math.sqrt(dx*dx+dz*dz);
+    if(d<o[2]+0.2){
+      if(d<1e-4){dx=1;dz=0;d=1}
+      p.x=o[0]+dx/d*(o[2]+0.2);p.z=o[1]+dz/d*(o[2]+0.2);
+    }
+  }
+}
+AFRAME.registerComponent('walk',{
+  schema:{speed:{default:3}},
+  init:function(){this.v=new THREE.Vector3()},
+  tick:function(t,dt){
+    var f=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0),s=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0),c,d,p;
+    if((!f&&!s)||moving)return;
+    c=this.el.sceneEl.camera;if(!c)return;
+    c.getWorldDirection(this.v);this.v.y=0;
+    if(this.v.lengthSq()<1e-6)return;
+    this.v.normalize();
+    d=Math.min(dt,80)/1000*this.data.speed;
+    p=this.el.object3D.position;
+    p.x+=(this.v.x*f-this.v.z*s)*d;
+    p.z+=(this.v.z*f+this.v.x*s)*d;
+    limitar(p);
+  }
+});
+rig.setAttribute('walk','speed: '+SPEED);
+
+/* ---------- 9. RECORRIDO GUIADO ---------- */
+var tourId=0,tourOn=false;
+function setTourBtn(){$('#btn-tour').textContent=tourOn?'Detener recorrido':'Recorrido guiado'}
+function tourStop(){
+  tourId++;tourOn=false;
+  EX.forEach(function(e){e.tourFocus=false;showCard(e,e.pinned)});
+  setTourBtn();
+}
+async function tourStart(){
+  if(tourOn){tourStop();return}
+  tourOn=true;setTourBtn();
+  var id=++tourId,i,ex;
+  for(i=0;i<EX.length;i++){
+    ex=EX[i];
+    await irA(ST[i],i===0?1600:1100);
+    if(id!==tourId)return;
+    ex.tourFocus=true;showCard(ex,true);
+    await sleep(5500);
+    if(id!==tourId)return;
+    ex.tourFocus=false;showCard(ex,ex.pinned);
+  }
+  await irA(INICIO,1600);
+  if(id!==tourId)return;
+  tourOn=false;setTourBtn();
+  toast('Fin del recorrido. Mirá un anillo de luz para volver a una pieza.',7000);
+}
+$('#btn-tour').addEventListener('click',tourStart);
+
+/* ---------- 10. MODO CARDBOARD: pantalla dividida en dos ojos ---------- */
+var stereoReady=false,sensorSeen=false,wake=null;
+window.addEventListener('deviceorientation',function(e){
+  if(e.alpha!=null||e.beta!=null||e.gamma!=null)sensorSeen=true;
+});
+function prepararEstereo(){
+  var r=scene.renderer;
+  if(stereoReady||!r||!THREE.StereoCamera)return;
+  try{
+    var st=new THREE.StereoCamera(),orig=r.render.bind(r),size=new THREE.Vector2();
+    st.aspect=0.5;st.eyeSep=0.064;
+    r.render=function(sc,camera){
+      if(!stereoOn||(r.xr&&r.xr.isPresenting)||!camera||!camera.isPerspectiveCamera)return orig(sc,camera);
+      r.getSize(size);
+      sc.updateMatrixWorld();
+      if(camera.parent===null)camera.updateMatrixWorld();
+      st.update(camera);
+      var w=size.x/2,h=size.y;
+      r.setScissorTest(true);
+      r.setScissor(0,0,w,h);r.setViewport(0,0,w,h);orig(sc,st.cameraL);
+      r.setScissor(w,0,w,h);r.setViewport(w,0,w,h);orig(sc,st.cameraR);
+      r.setScissorTest(false);
+      r.setViewport(0,0,size.x,size.y);
+    };
+    stereoReady=true;
+  }catch(err){console.warn('No se pudo preparar el modo estéreo',err)}
+}
+async function entrarEstereo(){
+  if(stereoOn)return;
+  prepararEstereo();
+  if(!stereoReady){toast('Este navegador no permite el modo de pantalla dividida.');return}
+  try{
+    if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function'){
+      await DeviceOrientationEvent.requestPermission();
+    }
+  }catch(e){}
+  stereoOn=true;
+  document.body.classList.add('stereo');
+  try{
+    var root=document.documentElement,fs=null;
+    if(root.requestFullscreen)fs=root.requestFullscreen({navigationUI:'hide'});
+    else if(root.webkitRequestFullscreen)root.webkitRequestFullscreen();
+    var bloquear=function(){try{var pr=screen.orientation.lock('landscape');if(pr&&pr.catch)pr.catch(function(){})}catch(e){}};
+    if(fs&&fs.then)fs.then(bloquear,function(){});else bloquear();
+  }catch(e){}
+  try{
+    if(navigator.wakeLock)navigator.wakeLock.request('screen').then(function(w){wake=w},function(){});
+  }catch(e){}
+  var gm=gaze.getObject3D&&gaze.getObject3D('mesh');
+  if(gm)gm.renderOrder=1000;
+  gaze.setAttribute('visible',true);
+  gaze.setAttribute('raycaster','enabled',true);
+  mouse.setAttribute('raycaster','enabled',false);
+  try{cam.setAttribute('look-controls','touchEnabled',false)}catch(e){}
+  window.dispatchEvent(new Event('resize'));
+  $('#vrhint').classList.add('on');
+  setTimeout(function(){$('#vrhint').classList.remove('on')},4500);
+  /* en modo VR el recorrido guiado empieza solo */
+  setTimeout(function(){if(stereoOn&&!tourOn)tourStart()},4800);
+  await sleep(700);
+  if(!sensorSeen){
+    toast('No llegan datos del giroscopio, así que el celular no seguirá el movimiento de tu cabeza. Abrí esta página directamente en el navegador (no dentro de otra app).',12000);
+  }
+}
+function salirEstereo(){
+  if(!stereoOn)return;
+  stereoOn=false;
+  tourStop();
+  document.body.classList.remove('stereo');
+  gaze.setAttribute('visible',false);
+  gaze.setAttribute('raycaster','enabled',false);
+  mouse.setAttribute('raycaster','enabled',true);
+  try{cam.setAttribute('look-controls','touchEnabled',true)}catch(e){}
+  try{if(document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen()}catch(e){}
+  try{if(screen.orientation&&screen.orientation.unlock)screen.orientation.unlock()}catch(e){}
+  try{if(wake){wake.release();wake=null}}catch(e){}
+  $('#vrhint').classList.remove('on');
+  window.dispatchEvent(new Event('resize'));
+}
+$('#btn-vr').addEventListener('click',entrarEstereo);
+$('#btn-exit').addEventListener('click',salirEstereo);
+document.addEventListener('fullscreenchange',function(){
+  if(stereoOn&&!document.fullscreenElement)salirEstereo();
+});
+
+/* ---------- 11. ARRANQUE ---------- */
+function arrancar(){
+  buildSala();
+  PIEZAS.forEach(buildPieza);
+  buildEstaciones();
+  loaderUpdate();
+  var go=function(){prepararEstereo();loadNext()};
+  if(scene.hasLoaded)go();else scene.addEventListener('loaded',go);
+  setTimeout(loaderDone,15000); /* el cartel de carga nunca queda bloqueando */
+}
+var fontsReady=(document.fonts&&document.fonts.load)
+  ?Promise.race([Promise.all([document.fonts.load('700 40px "Cormorant Garamond"'),document.fonts.load('500 30px "DM Sans"')]),sleep(1500)])
+  :Promise.resolve();
+fontsReady.catch(function(){}).then(arrancar);
+}
+/* arranque directo: A-Frame ya viene del <head>; si llegó desde un espejo, lo inicia el onload de ese script */
+var iniciada=false;
+window.__iniciar=function(){if(iniciada||!window.AFRAME||!AFRAME.THREE)return;iniciada=true;iniciarSala()};
+window.__iniciar();
+})();
 </script>
