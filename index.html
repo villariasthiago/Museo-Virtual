@@ -52,6 +52,14 @@ body.stereo #brand,body.stereo #ayuda,body.stereo #bar,body.stereo #toast{displa
 #vrhint div{display:grid;place-content:center;gap:6px;padding:0 9%;text-align:center;background:rgba(31,24,18,.88);font:700 clamp(16px,3.6vw,26px)/1.2 var(--f-serif)}
 #vrhint small{font:400 clamp(11px,2.2vw,15px)/1.4 var(--f-sans);color:var(--ink-2)}
 
+#ajustes{left:50%;top:50%;translate:-50% -50%;z-index:36;width:min(420px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto;display:grid;gap:12px;padding:18px;background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--gold)}
+#ajustes h2{margin:0;font:700 24px/1.1 var(--f-serif)}
+#ajustes p{margin:0;font:400 13px/1.5 var(--f-sans);color:var(--ink-2)}
+#ajustes label{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font:500 13px var(--f-sans)}
+#ajustes label input{grid-column:1/-1;width:100%;accent-color:var(--gold)}
+#ajustes output{color:var(--gold);font-variant-numeric:tabular-nums}
+#ajustes .fila{display:flex;flex-wrap:wrap;gap:8px}
+body.stereo #ajustes{display:none}
 @media (max-width:620px){#ayuda{display:none}}
 @media (prefers-reduced-motion:reduce){#loader,#toast{transition:none}}
 </style>
@@ -95,12 +103,26 @@ body.stereo #brand,body.stereo #ayuda,body.stereo #bar,body.stereo #toast{displa
 <div id="bar" class="ui">
   <button type="button" class="btn" id="btn-vr">Anteojos VR (Cardboard)</button>
   <button type="button" class="btn sec" id="btn-tour">Recorrido guiado</button>
+  <button type="button" class="btn sec" id="btn-aj">Ajustar visor</button>
 </div>
 <button type="button" class="btn sec ui" id="btn-exit">Salir del modo VR</button>
 
 <div id="vrhint" aria-live="polite">
   <div>Colocá el celular en los anteojos<small>El recorrido empieza solo · mirá un anillo de luz 1,5 s para ir hasta él</small></div>
   <div>Colocá el celular en los anteojos<small>El recorrido empieza solo · mirá un anillo de luz 1,5 s para ir hasta él</small></div>
+</div>
+<div id="ajustes" class="ui" hidden>
+  <h2>Ajustes del visor</h2>
+  <p>Tocá “Probar en el visor”, poné el celular en los anteojos y mirá la cuadrícula turquesa: las líneas deben verse rectas y la imagen cómoda. Si no, salí, cambiá un valor y volvé a probar.</p>
+  <label>Corrección de lente <output id="o-k"></output><input type="range" id="a-k" min="0" max="2" step="0.05"></label>
+  <label>Zoom de la imagen <output id="o-zoom"></output><input type="range" id="a-zoom" min="0.7" max="1.4" step="0.02"></label>
+  <label>Separación entre ojos <output id="o-ipd"></output><input type="range" id="a-ipd" min="54" max="74" step="1"></label>
+  <label>Centrado lateral <output id="o-shift"></output><input type="range" id="a-shift" min="-0.1" max="0.1" step="0.005"></label>
+  <div class="fila">
+    <button type="button" class="btn" id="a-probar">Probar en el visor</button>
+    <button type="button" class="btn sec" id="a-reset">Valores iniciales</button>
+    <button type="button" class="btn sec" id="a-cerrar">Cerrar</button>
+  </div>
 </div>
 <div id="toast" role="status"></div>
 <div id="loader">
@@ -627,10 +649,79 @@ var stereoReady=false,sensorSeen=false,wake=null;
 window.addEventListener('deviceorientation',function(e){
   if(e.alpha!=null||e.beta!=null||e.gamma!=null)sensorSeen=true;
 });
+/* Ajustes del visor (se guardan en el celular). Cada visor de cartón tiene lentes algo distintas. */
+var CFG={k:1,zoom:1,ipd:64,shift:0},CFG0={k:1,zoom:1,ipd:64,shift:0};
+try{var guardado=JSON.parse(localStorage.getItem('visorCfg')||'null');if(guardado)Object.keys(CFG).forEach(function(n){if(typeof guardado[n]==='number')CFG[n]=guardado[n]})}catch(e){}
+function guardarCfg(){try{localStorage.setItem('visorCfg',JSON.stringify(CFG))}catch(e){}}
+var FOV_VR=95,pxAntes=0;
+/* Corrección de lente: las lentes del visor deforman la imagen en “cojinete”, así que cada ojo se pre-deforma en “barril”. */
+var dist={grid:0,ok:false,tex:null,w:0,h:0};
+function prepararDistorsion(r){
+  if(!THREE.FramebufferTexture||!THREE.ShaderMaterial||!r.copyFramebufferToTexture)return;
+  dist.scene=new THREE.Scene();
+  dist.cam=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+  dist.mat=new THREE.ShaderMaterial({
+    uniforms:{tDiffuse:{value:null},uEye:{value:0},uShift:{value:0},uK1:{value:0.3},uK2:{value:0.2},uScale:{value:0.85},uAspect:{value:1},uGrid:{value:0}},
+    vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.0,1.0);}',
+    fragmentShader:[
+      'uniform sampler2D tDiffuse;',
+      'uniform float uEye;uniform float uShift;uniform float uK1;uniform float uK2;uniform float uScale;uniform float uAspect;uniform float uGrid;',
+      'varying vec2 vUv;',
+      'void main(){',
+      '  vec2 p=(vUv-vec2(0.5+uShift,0.5))*2.0;',
+      '  p.x*=uAspect;',
+      '  float r2=dot(p,p);',
+      '  float f=1.0+uK1*r2+uK2*r2*r2;',
+      '  vec2 q=p*f*uScale;',
+      '  q.x/=uAspect;',
+      '  vec2 s=q*0.5+0.5;',
+      '  if(s.x<0.004||s.x>0.996||s.y<0.004||s.y>0.996){gl_FragColor=vec4(0.0,0.0,0.0,1.0);return;}',
+      '  vec3 col=texture2D(tDiffuse,vec2((s.x+uEye)*0.5,s.y)).rgb;',
+      '  if(uGrid>0.5){',
+      '    vec2 g=abs(fract(q*4.0+0.5)-0.5);',
+      '    float line=1.0-smoothstep(0.0,0.012,min(g.x,g.y));',
+      '    float cruz=1.0-smoothstep(0.0,0.012,min(abs(q.x),abs(q.y)));',
+      '    col=mix(col,vec3(0.25,1.0,0.9),max(line,cruz)*0.8);',
+      '  }',
+      '  gl_FragColor=vec4(col,1.0);',
+      '}'
+    ].join('\n'),
+    depthTest:false,depthWrite:false
+  });
+  var quad=new THREE.Mesh(new THREE.PlaneGeometry(2,2),dist.mat);
+  quad.frustumCulled=false;
+  dist.scene.add(quad);
+  dist.ok=true;
+}
+function corregirLente(r,orig,w,h){
+  var dbs=dist.dbs||(dist.dbs=new THREE.Vector2()),u=dist.mat.uniforms,ac=r.autoClear,eye;
+  r.getDrawingBufferSize(dbs);
+  if(!dist.tex||dist.w!==dbs.x||dist.h!==dbs.y){
+    if(dist.tex)dist.tex.dispose();
+    dist.tex=new THREE.FramebufferTexture(dbs.x,dbs.y,THREE.RGBAFormat);
+    dist.w=dbs.x;dist.h=dbs.y;
+  }
+  /* se copia lo ya dibujado (los dos ojos lado a lado) y se vuelve a pintar cada mitad con la corrección */
+  r.copyFramebufferToTexture(dist.zero||(dist.zero=new THREE.Vector2(0,0)),dist.tex);
+  u.tDiffuse.value=dist.tex;
+  u.uK1.value=0.30*CFG.k;u.uK2.value=0.20*CFG.k;
+  u.uScale.value=0.85/CFG.zoom;
+  u.uAspect.value=w/h;
+  u.uGrid.value=dist.grid;
+  r.autoClear=false;
+  for(eye=0;eye<2;eye++){
+    u.uEye.value=eye;u.uShift.value=(eye?-1:1)*CFG.shift;
+    dist.mat.uniformsNeedUpdate=true;
+    r.setViewport(eye*w,0,w,h);
+    orig(dist.scene,dist.cam);
+  }
+  r.autoClear=ac;
+}
 function prepararEstereo(){
   var r=scene.renderer;
   if(stereoReady||!r||!THREE.StereoCamera)return;
   try{
+    try{prepararDistorsion(r)}catch(e){dist.ok=false;console.warn('Sin corrección de lente',e)}
     var st=new THREE.StereoCamera(),orig=r.render.bind(r),size=new THREE.Vector2();
     st.aspect=0.5;st.eyeSep=0.064;
     r.render=function(sc,camera){
@@ -638,19 +729,23 @@ function prepararEstereo(){
       r.getSize(size);
       sc.updateMatrixWorld();
       if(camera.parent===null)camera.updateMatrixWorld();
+      st.eyeSep=CFG.ipd/1000;
       st.update(camera);
       var w=size.x/2,h=size.y;
       r.setScissorTest(true);
       r.setScissor(0,0,w,h);r.setViewport(0,0,w,h);orig(sc,st.cameraL);
       r.setScissor(w,0,w,h);r.setViewport(w,0,w,h);orig(sc,st.cameraR);
       r.setScissorTest(false);
+      if(dist.ok){try{corregirLente(r,orig,w,h)}catch(e){dist.ok=false;r.autoClear=true;console.warn('Se desactivó la corrección de lente',e)}}
       r.setViewport(0,0,size.x,size.y);
     };
     stereoReady=true;
   }catch(err){console.warn('No se pudo preparar el modo estéreo',err)}
 }
-async function entrarEstereo(){
+async function entrarEstereo(prueba){
   if(stereoOn)return;
+  prueba=(prueba===true); /* true = prueba de ajustes: la cuadrícula queda y no empieza el recorrido */
+  $('#ajustes').hidden=true;
   prepararEstereo();
   if(!stereoReady){toast('Este navegador no permite el modo de pantalla dividida.');return}
   try{
@@ -660,6 +755,9 @@ async function entrarEstereo(){
   }catch(e){}
   stereoOn=true;
   document.body.classList.add('stereo');
+  dist.grid=1; /* cuadrícula de comprobación mientras se muestra la guía de colocación */
+  try{pxAntes=scene.renderer.getPixelRatio();scene.renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5))}catch(e){}
+  try{cam.setAttribute('camera','fov',FOV_VR)}catch(e){}
   try{
     var root=document.documentElement,fs=null;
     if(root.requestFullscreen)fs=root.requestFullscreen({navigationUI:'hide'});
@@ -678,9 +776,9 @@ async function entrarEstereo(){
   try{cam.setAttribute('look-controls','touchEnabled',false)}catch(e){}
   window.dispatchEvent(new Event('resize'));
   $('#vrhint').classList.add('on');
-  setTimeout(function(){$('#vrhint').classList.remove('on')},4500);
+  setTimeout(function(){$('#vrhint').classList.remove('on');if(!prueba)dist.grid=0},4500);
   /* en modo VR el recorrido guiado empieza solo */
-  setTimeout(function(){if(stereoOn&&!tourOn)tourStart()},4800);
+  if(!prueba)setTimeout(function(){if(stereoOn&&!tourOn)tourStart()},4800);
   await sleep(700);
   if(!sensorSeen){
     toast('No llegan datos del giroscopio, así que el celular no seguirá el movimiento de tu cabeza. Abrí esta página directamente en el navegador (no dentro de otra app).',12000);
@@ -690,6 +788,9 @@ function salirEstereo(){
   if(!stereoOn)return;
   stereoOn=false;
   tourStop();
+  dist.grid=0;
+  try{if(pxAntes)scene.renderer.setPixelRatio(pxAntes)}catch(e){}
+  try{cam.setAttribute('camera','fov',75)}catch(e){}
   document.body.classList.remove('stereo');
   gaze.setAttribute('visible',false);
   gaze.setAttribute('raycaster','enabled',false);
@@ -703,6 +804,30 @@ function salirEstereo(){
 }
 $('#btn-vr').addEventListener('click',entrarEstereo);
 $('#btn-exit').addEventListener('click',salirEstereo);
+
+/* panel de ajustes del visor */
+(function(){
+  var panel=$('#ajustes'),ids={k:'a-k',zoom:'a-zoom',ipd:'a-ipd',shift:'a-shift'};
+  function texto(n){
+    if(n==='ipd')return CFG.ipd+' mm';
+    if(n==='shift')return (CFG.shift*100).toFixed(1)+' %';
+    return CFG[n].toFixed(2);
+  }
+  function pintar(){
+    Object.keys(ids).forEach(function(n){$('#'+ids[n]).value=CFG[n];$('#o-'+n).textContent=texto(n)});
+  }
+  Object.keys(ids).forEach(function(n){
+    $('#'+ids[n]).addEventListener('input',function(e){
+      CFG[n]=parseFloat(e.target.value);
+      $('#o-'+n).textContent=texto(n);
+      guardarCfg();
+    });
+  });
+  $('#btn-aj').addEventListener('click',function(){pintar();panel.hidden=!panel.hidden});
+  $('#a-cerrar').addEventListener('click',function(){panel.hidden=true});
+  $('#a-reset').addEventListener('click',function(){Object.keys(CFG0).forEach(function(n){CFG[n]=CFG0[n]});guardarCfg();pintar()});
+  $('#a-probar').addEventListener('click',function(){entrarEstereo(true)});
+})();
 document.addEventListener('fullscreenchange',function(){
   if(stereoOn&&!document.fullscreenElement)salirEstereo();
 });
