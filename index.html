@@ -352,6 +352,20 @@ function bannerCv(){
   g.fillStyle='#ffe9bd';g.fillRect(660,226,280,4);
   return c;
 }
+function nombreCv(){
+  var c=mk(2000,620),g=c.getContext('2d'),s=190;
+  g.fillStyle='#2b1d16';g.fillRect(0,0,2000,620);
+  g.strokeStyle=GOLD;g.lineWidth=6;g.strokeRect(22,22,1956,576);
+  g.strokeStyle='#a9803c';g.lineWidth=2;g.strokeRect(40,40,1920,540);
+  g.textAlign='center';
+  g.fillStyle=GOLD;g.font='600 40px '+SANS;g.fillText('E-PORTFOLIO  ·  INFORMÁTICA EDUCATIVA II  ·  UNLPAM',1000,120);
+  do{g.font='700 '+s+'px '+SERIF;s-=4}while(g.measureText('Thiago Llovio Villarías').width>1780&&s>60);
+  g.fillStyle='#fff4dc';g.fillText('Thiago Llovio Villarías',1000,320);
+  g.fillStyle=GOLD;g.fillRect(860,360,280,4);
+  g.fillStyle='#ffe9bd';g.font='500 46px '+SANS;g.fillText('Estudiante de 3.º año del Profesorado Universitario en Computación',1000,438);
+  g.fillStyle='#cdbfa6';g.font='400 34px '+SANS;g.fillText('Museo Virtual de Paleontología · recurso educativo · FCEyN · UNLPam',1000,520);
+  return c;
+}
 function timelineCv(){
   var c=mk(2000,160),g=c.getContext('2d'),sw=1880/4,i,x,seg=[
     ['Precámbrico','4.540 – 539 Ma','#6b5240','#fff4dc'],
@@ -409,6 +423,128 @@ function capasCv(){
   return c;
 }
 
+
+/* Pecera de vidrio con escorpiones o serpiente. Todo se arma con geometrías simples; los animales se mueven solos. */
+AFRAME.registerComponent('terrario',{
+  schema:{tipo:{default:'escorpion'},seed:{default:1}},
+  init:function(){
+    var d=this.data,g=new THREE.Group(),r=rng(d.seed*131+7),bichos=[],Y0=0.65,i,m;
+    function mat(c,rough,em){return new THREE.MeshStandardMaterial({color:c,roughness:rough==null?0.85:rough,metalness:0,emissive:em?c:0x000000,emissiveIntensity:em||0})}
+    function add(geo,mt,x,y,z,parent){var o=new THREE.Mesh(geo,mt);o.position.set(x,y,z);(parent||g).add(o);return o}
+    function box(w,h,dp,x,y,z,c,rough,em){return add(new THREE.BoxGeometry(w,h,dp),mat(c,rough,em),x,y,z)}
+    var SP=new THREE.SphereGeometry(1,14,10);
+    /* mesa baja de madera */
+    box(1.3,0.5,0.7,0,0.25,0,'#4a3220',0.8);
+    box(1.38,0.05,0.78,0,0.525,0,'#6b4a2e',0.7);
+    /* arena (con brillo propio: simula la lámpara calefactora de adentro) */
+    box(1.2,0.1,0.64,0,0.6,0,'#d2ad72',1,0.5);
+    /* marcos y vidrio */
+    box(1.24,0.03,0.68,0,0.565,0,'#2a2018',0.6);
+    box(1.24,0.03,0.03,0,1.085,-0.325,'#2a2018',0.6);box(1.24,0.03,0.03,0,1.085,0.325,'#2a2018',0.6);
+    box(0.03,0.03,0.68,-0.605,1.085,0,'#2a2018',0.6);box(0.03,0.03,0.68,0.605,1.085,0,'#2a2018',0.6);
+    [[-0.61,-0.33],[0.61,-0.33],[-0.61,0.33],[0.61,0.33]].forEach(function(p){box(0.03,0.52,0.03,p[0],0.825,p[1],'#2a2018',0.6)});
+    m=new THREE.MeshStandardMaterial({color:0xcfeee6,roughness:0.05,metalness:0.1,transparent:true,opacity:0.13,side:THREE.DoubleSide,depthWrite:false});
+    add(new THREE.BoxGeometry(1.22,0.5,0.66),m,0,0.825,0);
+    /* lámpara calefactora y su resplandor sobre la arena */
+    add(new THREE.CylinderGeometry(0.06,0.09,0.07,16),new THREE.MeshBasicMaterial({color:0xffb35a}),-0.38,1.045,0);
+    var glow=add(new THREE.CircleGeometry(0.36,32),new THREE.MeshBasicMaterial({color:0xffb35a,transparent:true,opacity:0.22,depthWrite:false,side:THREE.DoubleSide}),-0.38,Y0+0.004,0);
+    glow.rotation.x=-Math.PI/2;
+    /* rocas */
+    for(i=0;i<4;i++){
+      var rad=0.06+r()*0.07,rk=add(new THREE.DodecahedronGeometry(rad,0),mat(['#8c7b66','#6e6050','#9a8870','#7a6a58'][i],0.95,0.35),(r()-0.5)*0.9,Y0+rad*0.55,(r()-0.5)*0.4);
+      rk.scale.set(1+r()*0.5,0.7,1+r()*0.4);rk.rotation.y=r()*3;
+    }
+    /* vegetación: cactus en el escorpionario, tronco y hojas en el de la serpiente */
+    if(d.tipo==='escorpion'){
+      for(i=0;i<2;i++){
+        var cx=0.3+i*0.2,cz=(i?-0.18:0.15),cg=new THREE.CylinderGeometry(0.022,0.026,0.2,10),cm=mat('#3f7a3c',0.8,0.35);
+        add(cg,cm,cx,Y0+0.1,cz);
+        var br=add(new THREE.CylinderGeometry(0.014,0.016,0.09,8),cm,cx+0.04,Y0+0.11,cz);br.rotation.z=-0.9;
+        add(new THREE.CylinderGeometry(0.014,0.016,0.07,8),cm,cx+0.065,Y0+0.15,cz).rotation.z=0;
+      }
+    }else{
+      var tr=add(new THREE.CylinderGeometry(0.035,0.04,0.7,12),mat('#5a3d26',0.9,0.3),0.12,Y0+0.04,-0.24);tr.rotation.z=Math.PI/2;tr.rotation.y=0.2;
+      for(i=0;i<5;i++){var lf=add(SP,mat('#3f7a3c',0.8,0.35),-0.4+i*0.09,Y0+0.04,0.24+(r()-0.5)*0.06);lf.scale.set(0.05,0.07+r()*0.05,0.015)}
+    }
+    /* cartelito en el frente de la mesa */
+    var pc=document.createElement('canvas');pc.width=512;pc.height=128;
+    var px=pc.getContext('2d');px.fillStyle='#f6f0e2';px.fillRect(0,0,512,128);px.strokeStyle='#a9803c';px.lineWidth=6;px.strokeRect(6,6,500,116);
+    px.fillStyle='#2b1d16';px.textAlign='center';px.font='700 46px '+SERIF;px.fillText(d.tipo==='escorpion'?'Escorpiones':'Serpiente',256,62);
+    px.fillStyle='#6b5a46';px.font='500 24px '+SANS;px.fillText(d.tipo==='escorpion'?'Arachnida · Scorpiones':'Reptilia · Serpentes',256,102);
+    var pt=new THREE.CanvasTexture(pc);if(THREE.SRGBColorSpace)pt.colorSpace=THREE.SRGBColorSpace;
+    var pq=add(new THREE.PlaneGeometry(0.4,0.1),new THREE.MeshBasicMaterial({map:pt}),0,0.3,0.352);
+    /* escorpión: cuerpo, abdomen, cola con aguijón, pinzas y patas */
+    function escorpion(sc){
+      var G=new THREE.Group(),bm=mat('#7a4a22',0.7,0.45),dk=mat('#4a2a12',0.7,0.4),k;
+      var body=add(SP,bm,0,0.03,0,G);body.scale.set(0.05,0.022,0.034);
+      for(k=0;k<5;k++){var ab=add(SP,bm,-0.06-k*0.035,0.03,0,G);var ra=0.03-k*0.0035;ab.scale.set(0.022,ra*0.7,ra)}
+      var tail=new THREE.Group();tail.position.set(-0.22,0.03,0);G.add(tail);
+      [[-0.01,0.025,0.015],[-0.025,0.062,0.0145],[-0.022,0.1,0.014],[0.0,0.128,0.0135],[0.035,0.138,0.013],[0.066,0.122,0.012]].forEach(function(t){
+        var sg=add(SP,dk,t[0],t[1],0,tail);sg.scale.set(t[2]*1.2,t[2]*1.2,t[2])});
+      var st=add(new THREE.ConeGeometry(0.012,0.04,10),mat('#2a1608',0.6,0.3),0.082,0.098,0,tail);st.rotation.z=-2.2;
+      var claws=[];
+      [-1,1].forEach(function(sd){
+        var cl=new THREE.Group();cl.position.set(0.045,0.03,sd*0.02);G.add(cl);
+        var arm=add(new THREE.CylinderGeometry(0.008,0.01,0.07,8),dk,0.03,0,sd*0.02,cl);arm.rotation.z=Math.PI/2;arm.rotation.x=sd*0.5;
+        var pn=add(SP,bm,0.075,0,sd*0.05,cl);pn.scale.set(0.034,0.014,0.02);
+        var fg=add(SP,dk,0.1,0,sd*0.04,cl);fg.scale.set(0.02,0.007,0.007);
+        claws.push(cl);
+      });
+      for(k=0;k<4;k++)[-1,1].forEach(function(sd){
+        var lg=add(new THREE.CylinderGeometry(0.0035,0.0045,0.065,6),dk,0.025-k*0.022,0.016,sd*0.045,G);
+        lg.rotation.x=sd*1.15;lg.rotation.z=(k-1.5)*0.15;
+      });
+      G.scale.setScalar(sc);
+      return {g:G,tail:tail,claws:claws};
+    }
+    /* serpiente coral: la cabeza sigue una curva y cada segmento repite el camino con retraso */
+    function serpiente(){
+      var G=new THREE.Group(),N=30,segs=[],cols=['#c0392b','#f1c40f','#1c1c1c','#f1c40f'],k,hd;
+      for(k=0;k<N;k++){
+        var sr=0.036*(1-Math.pow(k/N,2)*0.7),sg=add(SP,mat(cols[k%4],0.55,0.3),0,Y0+sr,0,G);sg.scale.setScalar(sr);segs.push(sg);
+      }
+      hd=add(SP,mat('#1c1c1c',0.5,0.3),0,Y0+0.03,0,G);hd.scale.set(0.045,0.026,0.032);
+      [-1,1].forEach(function(sd){var ey=add(SP,new THREE.MeshBasicMaterial({color:0xf5efe0}),0.02,0.012,sd*0.018,hd);ey.scale.set(0.006/0.045,0.006/0.026,0.006/0.032)});
+      return {g:G,segs:segs,head:hd};
+    }
+    if(d.tipo==='escorpion'){
+      [[-0.15,0.0,0.3,0.14,0.22,0],[0.1,0.1,0.22,0.09,-0.19,2.1],[-0.3,-0.15,0.2,0.07,0.17,4.0]].forEach(function(c,n){
+        var e=escorpion(n?1.35:1.7);e.g.position.y=Y0-0.005;g.add(e.g);
+        bichos.push({tipo:'e',e:e,cx:c[0],cz:c[1],ax:c[2],az:c[3],w:c[4],ph:c[5]});
+      });
+    }else{
+      var sn=serpiente();g.add(sn.g);bichos.push({tipo:'s',s:sn});
+    }
+    this.bichos=bichos;this.Y0=Y0;
+    this.el.setObject3D('mesh',g);
+  },
+  tick:function(time){
+    var t=time/1000,b,i,k,e,s,ax,az,x,z,dx,dz;
+    for(i=0;i<this.bichos.length;i++){
+      b=this.bichos[i];
+      if(b.tipo==='e'){
+        e=b.e;ax=b.ax;az=b.az;
+        x=b.cx+ax*Math.cos(b.w*t+b.ph);z=b.cz+az*Math.sin(b.w*t+b.ph);
+        dx=-ax*b.w*Math.sin(b.w*t+b.ph);dz=az*b.w*Math.cos(b.w*t+b.ph);
+        if(b.w<0){dx=-dx;dz=-dz}
+        e.g.position.x=x;e.g.position.z=z;e.g.rotation.y=Math.atan2(-dz,dx);
+        e.tail.rotation.z=Math.sin(t*1.7+b.ph)*0.12;e.tail.rotation.x=Math.sin(t*1.1+b.ph)*0.05;
+        e.claws.forEach(function(c,n){c.rotation.y=Math.sin(t*2.3+n*1.7+b.ph)*0.16});
+      }else{
+        s=b.s;
+        for(k=0;k<s.segs.length;k++){
+          var tt=t-k*0.17;
+          s.segs[k].position.x=0.44*Math.sin(0.37*tt);
+          s.segs[k].position.z=0.2*Math.sin(0.61*tt+1);
+        }
+        var h=0.44*Math.cos(0.37*t)*0.37,hz=0.2*Math.cos(0.61*t+1)*0.61;
+        s.head.position.set(0.44*Math.sin(0.37*(t+0.12)),this.Y0+0.03,0.2*Math.sin(0.61*(t+0.12)+1));
+        s.head.rotation.y=Math.atan2(-hz,h);
+      }
+    }
+  }
+});
+
 /* ---------- 4. SALA ---------- */
 var OBST=[]; /* [x,z,radio] */
 function buildSala(){
@@ -439,6 +575,14 @@ function buildSala(){
     bx(2.64,1.8,0.05,'0 0 0','#4a3220',f,0.7);
     cvsEntity(q[1],2.5,1.667,'0 0 0.03',null,f);
   });
+  /* cartel con el nombre del autor, en la pared de la entrada (detrás de quien llega) */
+  bx(4.5,1.5,0.05,P(0,2.3,ZF-0.02),'#4a3220',world,0.7);
+  cvsEntity(nombreCv(),4.3,1.333,P(0,2.3,ZF-0.055),'0 180 0');
+  /* peceras con escorpiones y serpientes junto a las paredes laterales */
+  [[-4.7,-1.2,'escorpion',90,1],[-4.7,-9.0,'serpiente',90,2],[4.7,-1.2,'serpiente',-90,3],[4.7,-9.0,'escorpion',-90,4]].forEach(function(t){
+    E('a-entity',{terrario:'tipo: '+t[2]+'; seed: '+t[4],position:P(t[0],0,t[1]),rotation:P(0,t[3],0)});
+    OBST.push([t[0],t[1]-0.35,0.5]);OBST.push([t[0],t[1]+0.35,0.5]);
+  });
   /* bancos de madera junto a la entrada */
   [-2.4,2.4].forEach(function(x){
     var b=E('a-entity',{position:P(x,0,1.1)});
@@ -463,15 +607,16 @@ function buildPieza(p,i){
   var sx=p.lado==='izq'?-XPED:p.lado==='der'?XPED:0,dir=p.lado==='izq'?1:p.lado==='der'?-1:0;
   var g=E('a-entity',{position:P(sx,0,p.z)});
   /* plinto cilíndrico de travertino con base y tapa */
-  cy(0.5,0.12,P(0,0.06,0),'#d6c9b0',g,0.55,0);
-  cy(0.405,0.02,P(0,0.13,0),'#b8924a',g,0.35,0.6);
-  cy(0.4,0.86,P(0,0.55,0),'#efe6d2',g,0.5,0);
-  cy(0.46,0.06,P(0,1.01,0),'#f7f0e0',g,0.45,0);
+  var ped=[
+    cy(0.5,0.12,P(0,0.06,0),'#d6c9b0',g,0.55,0),
+    cy(0.405,0.02,P(0,0.13,0),'#b8924a',g,0.35,0.6),
+    cy(0.4,0.86,P(0,0.55,0),'#efe6d2',g,0.5,0),
+    cy(0.46,0.06,P(0,1.01,0),'#f7f0e0',g,0.45,0)];
   var plPos,plRot,cPos,cRot;
   if(dir===1){plPos=P(0.412,0.55,0);plRot='0 90 0';cPos=P(0.6,2.05,0);cRot='0 90 0'}
   else if(dir===-1){plPos=P(-0.412,0.55,0);plRot='0 -90 0';cPos=P(-0.6,2.05,0);cRot='0 -90 0'}
   else{plPos=P(0,0.55,0.412);plRot='0 0 0';cPos=P(0,2.05,0.6);cRot='0 0 0'}
-  cvsEntity(plaqueCv(p),0.3,0.14,plPos,plRot,g);
+  ped.push(cvsEntity(plaqueCv(p),0.3,0.14,plPos,plRot,g));
   /* foco de exposición en el techo, justo sobre el plinto y apuntando hacia abajo */
   E('a-entity',{id:'tg'+i,position:P(0,TOP,0)},g);
   E('a-entity',{light:'type: spot; color: #ffe2b8; intensity: 3.2; angle: 24; penumbra: 0.45; decay: 1.3; distance: 9; target: #tg'+i,position:P(0,H-0.25,0)},g);
@@ -488,7 +633,7 @@ function buildPieza(p,i){
   var model=E('a-entity',{'class':'clickable pieza'},yawer);
   var card=cvsEntity(cardCv(p),1.1,0.66,cPos,cRot,g);
   card.setAttribute('visible',false);
-  var ex={p:p,i:i,g:g,holder:holder,tilter:tilter,yawer:yawer,model:model,card:card,pinned:false,tourFocus:false,loaded:false,x:sx,z:p.z};
+  var ex={p:p,i:i,g:g,ped:ped,holder:holder,tilter:tilter,yawer:yawer,model:model,card:card,pinned:false,tourFocus:false,loaded:false,x:sx,z:p.z};
   EX.push(ex);
   model.addEventListener('mouseenter',function(){showCard(ex,true)});
   model.addEventListener('mouseleave',function(){showCard(ex,ex.pinned||ex.tourFocus)});
@@ -658,7 +803,7 @@ async function tourStart(){
     if(id!==tourId)return;
     ex.tourFocus=false;showCard(ex,ex.pinned);
   }
-  await irA(INICIO,1600);
+  await irA({x:0,z:0.3,yaw:Math.PI},1800); /* el recorrido termina frente al cartel del autor */
   if(id!==tourId)return;
   tourOn=false;setTourBtn();
   toast('Fin del recorrido.',5000);
@@ -858,13 +1003,13 @@ document.addEventListener('fullscreenchange',function(){
 var pdn={x:0,y:0},pup={x:0,y:0};
 window.addEventListener('pointerdown',function(e){pdn.x=pup.x=e.clientX;pdn.y=pup.y=e.clientY},true);
 window.addEventListener('pointerup',function(e){pup.x=e.clientX;pup.y=e.clientY},true);
-var inspLight=E('a-entity',{light:'type: point; color: #fff1d6; intensity: 1.1; distance: 1.9; decay: 1',position:'0.2 0.25 0.05',visible:'false'},cam);
+var inspLight=E('a-entity',{light:'type: point; color: #fff1d6; intensity: 1.7; distance: 2.8; decay: 1',position:'0.25 0.3 0.1',visible:'false'},cam);
+var inspLight2=E('a-entity',{light:'type: point; color: #ffe9cc; intensity: 0.7; distance: 2.6; decay: 1',position:'-0.35 0.1 0.2',visible:'false'},cam);
 var ocultos=[];
-/* mientras se inspecciona, solo se oculta el plinto de esa pieza; la sala queda visible */
+/* mientras se inspecciona, solo se oculta el plinto de esa pieza; la sala y su luz quedan */
 function ocultarSala(ex){
-  var gp=ex.g.object3D;
-  function ocultar(o){if(o.visible){o.visible=false;ocultos.push(o)}}
-  gp.children.forEach(function(o){if(o!==ex.holder.object3D)ocultar(o)});
+  /* solo el plinto y su placa; el foco, el charco de luz y la sala siguen visibles */
+  ex.ped.forEach(function(el){if(el.object3D.visible){el.object3D.visible=false;ocultos.push(el.object3D)}});
 }
 function mostrarSala(){ocultos.forEach(function(o){o.visible=true});ocultos=[]}
 function inspColocar(q,s,anc){
@@ -903,7 +1048,7 @@ function entrarInspeccion(ex){
   document.body.classList.add('insp');
   cam.setAttribute('look-controls','enabled',false);
   mouse.setAttribute('raycaster','enabled',false);
-  inspLight.setAttribute('visible',true);
+  inspLight.setAttribute('visible',true);inspLight2.setAttribute('visible',true);
   ocultarSala(ex);
   $('#insp').hidden=false;
   inspTween(o3.quaternion.clone(),o3.scale.x,cg,insp.Q,S0,A,650,function(){insp.ready=true});
@@ -912,7 +1057,7 @@ function salirInspeccion(){
   if(!insp)return;
   var ex=insp.ex,h=ex.holder,o3=h.object3D,p=ex.p,I=insp,idq=new THREE.Quaternion(),dest=new THREE.Vector3(0,TOP,0).add(I.c0);
   I.ready=false;
-  mostrarSala();inspLight.setAttribute('visible',false);
+  mostrarSala();inspLight.setAttribute('visible',false);inspLight2.setAttribute('visible',false);
   $('#insp').hidden=true;
   inspTween(I.Q.clone(),I.S,I.A.clone(),idq,1,dest,550,function(){
     o3.position.set(0,TOP,0);o3.quaternion.identity();o3.scale.setScalar(1);
