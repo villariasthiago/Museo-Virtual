@@ -60,6 +60,13 @@ body.stereo #brand,body.stereo #ayuda,body.stereo #bar,body.stereo #toast{displa
 #ajustes output{color:var(--gold);font-variant-numeric:tabular-nums}
 #ajustes .fila{display:flex;flex-wrap:wrap;gap:8px}
 body.stereo #ajustes{display:none}
+#app canvas{touch-action:none}
+#insp{inset:0;pointer-events:none}
+#insp>*{pointer-events:auto}
+#insp-hint{position:absolute;left:0;right:0;bottom:calc(72px + env(safe-area-inset-bottom,0px));margin:0;text-align:center;font:400 12px var(--f-sans);color:var(--ink-2);text-shadow:0 1px 8px #000;pointer-events:none!important}
+#insp-bar{position:absolute;left:50%;translate:-50% 0;bottom:calc(14px + env(safe-area-inset-bottom,0px));display:flex;gap:8px}
+body.insp #ayuda,body.insp #bar{display:none}
+body.stereo #insp{display:none}
 @media (max-width:620px){#ayuda{display:none}}
 @media (prefers-reduced-motion:reduce){#loader,#toast{transition:none}}
 </style>
@@ -99,7 +106,7 @@ body.stereo #ajustes{display:none}
 </div>
 
 <div id="brand" class="ui"><small>FCEyN · UNLPam</small><b>Museo Virtual de Paleontología</b></div>
-<p id="ayuda" class="ui">Arrastrá para mirar · W A S D para caminar · tocá los anillos de luz del piso para ir a una pieza</p>
+<p id="ayuda" class="ui">Arrastrá para mirar · W A S D para caminar · tocá los anillos de luz del piso para ir a una pieza · tocá una pieza para tomarla</p>
 <div id="bar" class="ui">
   <button type="button" class="btn" id="btn-vr">Anteojos VR (Cardboard)</button>
   <button type="button" class="btn sec" id="btn-tour">Recorrido guiado</button>
@@ -124,6 +131,14 @@ body.stereo #ajustes{display:none}
     <button type="button" class="btn sec" id="a-cerrar">Cerrar</button>
   </div>
 </div>
+<div id="insp" class="ui" hidden>
+  <p id="insp-hint">Arrastrá para girar · rueda o pellizco para acercar · Esc para soltar</p>
+  <div id="insp-bar">
+    <button type="button" class="btn sec" id="insp-menos" aria-label="Alejar">−</button>
+    <button type="button" class="btn sec" id="insp-mas" aria-label="Acercar">+</button>
+    <button type="button" class="btn" id="insp-cerrar">Soltar pieza</button>
+  </div>
+</div>
 <div id="toast" role="status"></div>
 <div id="loader">
   <span class="k">Facultad de Ciencias Exactas y Naturales · UNLPam</span>
@@ -145,18 +160,26 @@ var scene=$('#scene'),rig=$('#rig'),cam=$('#cam'),gaze=$('#gaze'),mouse=$('#mous
 
 /* ---------- 1. DATOS ----------
    Los .glb están en la misma carpeta que este HTML. Completá cientifico, periodo, procedencia y tamano cuando los tengas. */
+/* DATOS DE EJEMPLO (ilustrativos): todavía no hay información real. Reemplazar por los datos verificados de cada pieza. */
+var DATOS={
+ 'Macaca sp.':{cientifico:'Macaca sp.',periodo:'Pleistoceno',procedencia:'Sudeste asiático',tamano:'≈ 15 cm',ilustrativo:true},
+ 'PVSJ 585':{cientifico:'Theropoda indet.',periodo:'Triásico Superior',procedencia:'Formación Ischigualasto, San Juan',tamano:'≈ 12 cm',ilustrativo:true},
+ 'GHUNLPam 15375':{cientifico:'Scleractinia indet.',periodo:'Mioceno',procedencia:'Formación Puerto Madryn, Chubut',tamano:'≈ 9 cm',ilustrativo:true},
+ 'Montsecosuchus depereti':{cientifico:'Montsecosuchus depereti',periodo:'Cretácico Inferior',procedencia:'La Pedrera de Rúbies, Lleida (España)',tamano:'≈ 60 cm',ilustrativo:true},
+ 'Sarcosuchus imperator':{cientifico:'Sarcosuchus imperator',periodo:'Cretácico Inferior',procedencia:'Níger y Brasil',tamano:'Escala a confirmar',ilustrativo:true}
+};
 var PIEZAS=[
- {glb:'./modelo1.glb',codigo:'GHUNLPam 28000',coleccion:'Colección Paleontológica',lado:'izq',z:-3,size:0.6,spin:48,tilt:0,yaw:0},
+ {glb:'./macaca.glb',codigo:'Macaca sp.',coleccion:'Cráneo fósil',lado:'izq',z:-3,size:0.62,spin:48,tilt:0,yaw:0},
  {glb:'./modelo2.glb',codigo:'PVSJ 585',coleccion:'Colección Ricardo',lado:'der',z:-3,size:0.68,spin:0,tilt:28,yaw:90},
  {glb:'./modelo3.glb',codigo:'GHUNLPam 15375',coleccion:'Colección Paleontológica',lado:'izq',z:-7,size:0.6,spin:48,tilt:0,yaw:0},
- {glb:'./modelo4.glb',codigo:'GHUNLPam 29818',coleccion:'Colección Ricardo',lado:'der',z:-7,size:0.68,spin:0,tilt:30,yaw:0},
- {glb:'./modelo5.glb',codigo:'Avipeda 8643',coleccion:'Colección Ricardo',lado:'centro',z:-10.5,size:0.85,spin:0,tilt:28,yaw:0}
-].map(function(p){return Object.assign({cientifico:'',periodo:'',procedencia:'',tamano:''},p)});
+ {glb:'./montsecosuchus.glb',codigo:'Montsecosuchus depereti',coleccion:'Placa con esqueleto',lado:'der',z:-7,size:0.74,spin:0,tilt:30,yaw:90},
+ {glb:'./sarcosuchus.glb',codigo:'Sarcosuchus imperator',coleccion:'Esqueleto montado',lado:'centro',z:-10.5,size:0.95,spin:0,tilt:0,yaw:0,realce:1.6}
+].map(function(p){return Object.assign({cientifico:'',periodo:'',procedencia:'',tamano:'',ilustrativo:false},DATOS[p.codigo]||{},p)});
 
 /* sala de 11 x 15,5 m: las piezas quedan a 3-5 m entre sí */
 var W=5.5,ZF=3,ZB=-12.5,H=4.2,TOP=1.04,XPED=2.6,SPEED=3.4;
 var GOLD='#e6c384',SERIF="'Cormorant Garamond',Georgia,serif",SANS="'DM Sans',system-ui,sans-serif";
-var stereoOn=false,moving=false;
+var stereoOn=false,moving=false,insp=null;
 var world=document.createElement('a-entity');
 scene.appendChild(world);
 
@@ -311,9 +334,11 @@ function cardCv(p){
     y=210+i*58;
     g.fillStyle='#cdbfa6';g.font='500 20px '+SANS;g.fillText(rows[i][0].toUpperCase(),44,y);
     if(rows[i][1]){g.fillStyle='#f6efe0';g.font='600 32px '+SERIF}else{g.fillStyle='#a39579';g.font='italic 500 30px '+SERIF}
+    if(rows[i][1]){var fs=32;do{g.font='600 '+fs+'px '+SERIF;fs-=2}while(g.measureText(rows[i][1]).width>400&&fs>16)}
     g.fillText(rows[i][1]||'Por completar',320,y+2);
   }
   g.fillStyle='#a39579';g.font='400 19px '+SANS;g.fillText('Museo Virtual · FCEyN · UNLPam',44,436);
+  if(p.ilustrativo){g.textAlign='right';g.fillStyle=GOLD;g.font='italic 500 19px '+SANS;g.fillText('Datos ilustrativos · a confirmar',724,436)}
   return c;
 }
 function bannerCv(){
@@ -389,8 +414,8 @@ var OBST=[]; /* [x,z,radio] */
 function buildSala(){
   var L=ZF-ZB,cz=(ZF+ZB)/2,z,g;
   /* luz cálida pareja: la sala se ve completa, sin zonas negras */
-  E('a-entity',{light:'type: ambient; color: #fff1dc; intensity: 0.55'});
-  E('a-entity',{light:'type: hemisphere; color: #fff6ea; groundColor: #8a6a4a; intensity: 0.4'});
+  E('a-entity',{light:'type: ambient; color: #ffe9cf; intensity: 0.2'});
+  E('a-entity',{light:'type: hemisphere; color: #fff0dc; groundColor: #5a4430; intensity: 0.12'});
   /* piso de lajas de piedra */
   cvsEntity(floorCv(),W*2,L,P(0,0,cz),'-90 0 0',world,'lit: true; rough: 0.95; rx: '+(W*2/3.2)+'; ry: '+(L/3.2));
   /* paredes de estratos de roca */
@@ -400,7 +425,7 @@ function buildSala(){
   cvsEntity(strataCv(W*2,H,14),W*2,H,P(0,H/2,ZF),'0 180 0',world,'lit: true; rough: 1');
   /* techo claro con vigas de madera */
   pl(W*2,L,P(0,H,cz),'90 0 0','#efe6d4',world,1,0);
-  for(z=ZF-1.5;z>ZB;z-=3)bx(W*2,0.22,0.32,P(0,H-0.11,z),'#4a3220',world,0.8);
+  for(z=ZF-1.5;z>ZB;z-=3)if(Math.abs(z+10.5)>0.6)bx(W*2,0.22,0.32,P(0,H-0.11,z),'#4a3220',world,0.8);
   /* tarima de piedra para la pieza central y cartel de la sala */
   cy(1.35,0.12,P(0,0.06,-10.5),'#cdbfa5',world,0.7,0);
   cvsEntity(bannerCv(),5.2,0.975,P(0,3.15,ZB+0.03),null);
@@ -449,9 +474,13 @@ function buildPieza(p,i){
   cvsEntity(plaqueCv(p),0.3,0.14,plPos,plRot,g);
   /* foco de exposición en el techo, justo sobre el plinto y apuntando hacia abajo */
   E('a-entity',{id:'tg'+i,position:P(0,TOP,0)},g);
-  E('a-entity',{light:'type: spot; color: #ffe6c0; intensity: 0.8; angle: 50; penumbra: 0.5; decay: 1; distance: 8; target: #tg'+i,position:P(0,H-0.25,0)},g);
+  E('a-entity',{light:'type: spot; color: #ffe2b8; intensity: 3.2; angle: 24; penumbra: 0.45; decay: 1.3; distance: 9; target: #tg'+i,position:P(0,H-0.25,0)},g);
+  /* luz de realce: viene de costado y de frente, de poco alcance, para que el foco "toque" la pieza y se vea su relieve */
+  E('a-entity',{light:'type: point; color: #ffe2b8; intensity: '+(p.realce||0.9)+'; distance: 1.9; decay: 1',position:P(dir*0.9,TOP+0.75,dir===0?0.9:0.3)},g);
   cy(0.1,0.2,P(0,H-0.1,0),'#2a2018',g,0.5,0.4);
   E('a-entity',{geometry:'primitive: circle; radius: 0.08',material:'shader: flat; color: #fff1d6; side: double',position:P(0,H-0.205,0),rotation:'90 0 0'},g);
+  /* charco de luz en el piso alrededor del plinto */
+  E('a-entity',{geometry:'primitive: circle; radius: '+(dir===0?1.05:1.3)+'; segments: 40',material:'shader: flat; color: #ffd9a0; opacity: 0.14; transparent: true; side: double; depthWrite: false',position:P(0,dir===0?0.13:0.012,0),rotation:'-90 0 0'},g);
   OBST.push([sx,p.z,0.6]);
   var holder=E('a-entity',{position:P(0,TOP,0)},g);
   var tilter=E('a-entity',{},holder);
@@ -463,7 +492,11 @@ function buildPieza(p,i){
   EX.push(ex);
   model.addEventListener('mouseenter',function(){showCard(ex,true)});
   model.addEventListener('mouseleave',function(){showCard(ex,ex.pinned||ex.tourFocus)});
-  model.addEventListener('click',function(){ex.pinned=!ex.pinned;showCard(ex,ex.pinned||ex.tourFocus)});
+  model.addEventListener('click',function(){
+    if(stereoOn){ex.pinned=!ex.pinned;showCard(ex,ex.pinned||ex.tourFocus);return}
+    if(Math.hypot(pup.x-pdn.x,pup.y-pdn.y)>8)return; /* fue un arrastre de la mirada, no un toque */
+    entrarInspeccion(ex);
+  });
   model.addEventListener('model-loaded',function(){onModel(ex)});
   model.addEventListener('model-error',function(){onModelError(ex)});
   /* estación del piso: a 1,3 m del plinto, mirando la pieza */
@@ -602,7 +635,7 @@ AFRAME.registerComponent('walk',{
   init:function(){this.v=new THREE.Vector3()},
   tick:function(t,dt){
     var f=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0),s=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0),c,d,p;
-    if((!f&&!s)||moving)return;
+    if((!f&&!s)||moving||insp)return;
     c=this.el.sceneEl.camera;if(!c)return;
     c.getWorldDirection(this.v);this.v.y=0;
     if(this.v.lengthSq()<1e-6)return;
@@ -744,6 +777,7 @@ function prepararEstereo(){
 }
 async function entrarEstereo(prueba){
   if(stereoOn)return;
+  if(insp)return; /* primero soltá la pieza */
   prueba=(prueba===true); /* true = prueba de ajustes: la cuadrícula queda y no empieza el recorrido */
   $('#ajustes').hidden=true;
   prepararEstereo();
@@ -831,6 +865,122 @@ $('#btn-exit').addEventListener('click',salirEstereo);
 document.addEventListener('fullscreenchange',function(){
   if(stereoOn&&!document.fullscreenElement)salirEstereo();
 });
+
+/* ---------- 10b. INSPECCIÓN: tomar la pieza, girarla y acercarla ---------- */
+var pdn={x:0,y:0},pup={x:0,y:0};
+window.addEventListener('pointerdown',function(e){pdn.x=pup.x=e.clientX;pdn.y=pup.y=e.clientY},true);
+window.addEventListener('pointerup',function(e){pup.x=e.clientX;pup.y=e.clientY},true);
+var inspLight=E('a-entity',{light:'type: point; color: #fff1d6; intensity: 1.1; distance: 1.9; decay: 1',position:'0.2 0.25 0.05',visible:'false'},cam);
+var ocultos=[];
+/* mientras se inspecciona, solo se oculta el plinto de esa pieza; la sala queda visible */
+function ocultarSala(ex){
+  var gp=ex.g.object3D;
+  function ocultar(o){if(o.visible){o.visible=false;ocultos.push(o)}}
+  gp.children.forEach(function(o){if(o!==ex.holder.object3D)ocultar(o)});
+}
+function mostrarSala(){ocultos.forEach(function(o){o.visible=true});ocultos=[]}
+function inspColocar(q,s,anc){
+  var o3=insp.ex.holder.object3D;
+  o3.quaternion.copy(q);o3.scale.setScalar(s);
+  o3.position.copy(insp.c0).multiplyScalar(s).applyQuaternion(q).multiplyScalar(-1).add(anc);
+}
+function inspAplicar(){inspColocar(insp.Q,insp.S,insp.A)}
+function inspTween(q0,s0,a0,q1,s1,a1,ms,fin){
+  var t0=performance.now(),id=++insp.tw,q=new THREE.Quaternion(),a=new THREE.Vector3();
+  (function paso(now){
+    if(!insp||id!==insp.tw)return;
+    var k=Math.min(1,(now-t0)/ms),e=k*k*(3-2*k);
+    q.copy(q0).slerp(q1,e);a.copy(a0).lerp(a1,e);
+    inspColocar(q,s0+(s1-s0)*e,a);
+    if(k<1)requestAnimationFrame(paso);else if(fin)fin();
+  })(t0);
+}
+function entrarInspeccion(ex){
+  if(insp||stereoOn||!ex.loaded)return;
+  tourStop();
+  ex.pinned=false;showCard(ex,false);
+  var h=ex.holder,o3=h.object3D,gp=ex.g.object3D,cm=scene.camera,cp=new THREE.Vector3(),cd=new THREE.Vector3();
+  h.removeAttribute('animation__spin');
+  gp.updateMatrixWorld(true);o3.updateMatrix();o3.updateMatrixWorld(true);
+  var box=new THREE.Box3().setFromObject(ex.model.getObject3D('mesh')),size=box.getSize(new THREE.Vector3());
+  var cg=gp.worldToLocal(box.getCenter(new THREE.Vector3()));
+  var c0=cg.clone().applyMatrix4(new THREE.Matrix4().copy(o3.matrix).invert());
+  cm.getWorldPosition(cp);cm.getWorldDirection(cd);
+  var cq0=new THREE.Quaternion(),der=new THREE.Vector3(1,0,0);
+  cm.getWorldQuaternion(cq0);der.applyQuaternion(cq0);
+  /* en pantallas anchas la pieza queda un poco a la derecha, lejos del panel de datos */
+  var A=gp.worldToLocal(cp.clone().add(cd.multiplyScalar(1.0)).add(der.multiplyScalar(0)));
+  var S0=0.55/(Math.max(size.x,size.y,size.z)||1);
+  insp={ex:ex,c0:c0,A:A,Q:o3.quaternion.clone(),S:S0,S0:S0,tw:0,ready:false};
+  document.body.classList.add('insp');
+  cam.setAttribute('look-controls','enabled',false);
+  mouse.setAttribute('raycaster','enabled',false);
+  inspLight.setAttribute('visible',true);
+  ocultarSala(ex);
+  $('#insp').hidden=false;
+  inspTween(o3.quaternion.clone(),o3.scale.x,cg,insp.Q,S0,A,650,function(){insp.ready=true});
+}
+function salirInspeccion(){
+  if(!insp)return;
+  var ex=insp.ex,h=ex.holder,o3=h.object3D,p=ex.p,I=insp,idq=new THREE.Quaternion(),dest=new THREE.Vector3(0,TOP,0).add(I.c0);
+  I.ready=false;
+  mostrarSala();inspLight.setAttribute('visible',false);
+  $('#insp').hidden=true;
+  inspTween(I.Q.clone(),I.S,I.A.clone(),idq,1,dest,550,function(){
+    o3.position.set(0,TOP,0);o3.quaternion.identity();o3.scale.setScalar(1);
+    if(p.spin>0)h.setAttribute('animation__spin','property: rotation; from: 0 0 0; to: 0 360 0; dur: '+(p.spin*1000)+'; easing: linear; loop: true');
+    insp=null;
+    document.body.classList.remove('insp');
+    cam.setAttribute('look-controls','enabled',true);
+    mouse.setAttribute('raycaster','enabled',true);
+  });
+}
+function inspZoom(f){
+  if(!insp||!insp.ready)return;
+  insp.S=Math.max(insp.S0*0.3,Math.min(insp.S0*5,insp.S*f));
+  inspAplicar();
+}
+function inspRotar(dx,dy){
+  if(!insp||!insp.ready)return;
+  var cq=new THREE.Quaternion(),up=new THREE.Vector3(0,1,0),rt=new THREE.Vector3(1,0,0),dq;
+  scene.camera.getWorldQuaternion(cq);
+  up.applyQuaternion(cq);rt.applyQuaternion(cq);
+  dq=new THREE.Quaternion().setFromAxisAngle(up,dx*0.008).multiply(new THREE.Quaternion().setFromAxisAngle(rt,dy*0.008));
+  insp.Q.premultiply(dq).normalize();
+  inspAplicar();
+}
+(function(){
+  var ptrs=new Map(),pinch0=0,s0=1;
+  function dist2(){var a=Array.from(ptrs.values());return Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y)||1}
+  window.addEventListener('pointerdown',function(e){
+    if(!insp||(e.target.closest&&e.target.closest('#insp')))return;
+    ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(ptrs.size===2){pinch0=dist2();s0=insp.S}
+  });
+  window.addEventListener('pointermove',function(e){
+    var p=ptrs.get(e.pointerId);
+    if(!insp||!p)return;
+    var dx=e.clientX-p.x,dy=e.clientY-p.y;
+    p.x=e.clientX;p.y=e.clientY;
+    if(ptrs.size===1)inspRotar(dx,dy);
+    else if(ptrs.size>=2&&insp.ready){insp.S=Math.max(insp.S0*0.3,Math.min(insp.S0*5,s0*dist2()/pinch0));inspAplicar()}
+  });
+  function soltar(e){ptrs.delete(e.pointerId)}
+  window.addEventListener('pointerup',soltar);window.addEventListener('pointercancel',soltar);
+  window.addEventListener('wheel',function(e){
+    if(!insp)return;
+    e.preventDefault();inspZoom(Math.exp(-e.deltaY*0.0015));
+  },{passive:false});
+  window.addEventListener('keydown',function(e){
+    if(!insp)return;
+    if(e.code==='Escape')salirInspeccion();
+    else if(e.code==='Equal'||e.code==='NumpadAdd')inspZoom(1.15);
+    else if(e.code==='Minus'||e.code==='NumpadSubtract')inspZoom(1/1.15);
+  });
+  $('#insp-cerrar').addEventListener('click',salirInspeccion);
+  $('#insp-mas').addEventListener('click',function(){inspZoom(1.2)});
+  $('#insp-menos').addEventListener('click',function(){inspZoom(1/1.2)});
+})();
 
 /* ---------- 11. ARRANQUE ---------- */
 function arrancar(){
