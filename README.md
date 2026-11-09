@@ -61,34 +61,3 @@ Museo-Virtual/
 ├── montsecosuchus.glb
 └── README.md
 ```
-
-## Probarlo en tu compu
-
-Los modelos se cargan por red, así que no alcanza con abrir `index.html` con doble clic. Desde la carpeta del proyecto:
-
-```bash
-python3 -m http.server 8000
-```
-
-y abrir <http://localhost:8000>.
-
-## Cómo editar el contenido
-
-Todo está al principio de `index.html`:
-
-- **Datos de cada pieza:** el bloque `DATOS` (nombre científico, período, procedencia, tamaño). Al completarlos con datos reales, cambiar `ilustrativo` a `false` y se va el aviso.
-- **Piezas y posición:** la lista `PIEZAS` (archivo, plinto, tamaño, inclinación, velocidad de giro y brillo de la luz de realce).
-- **Luces:** en `buildSala` (luz ambiente) y `buildPieza` (foco y realce).
-- **Cartel del autor:** la función `nombreCv`.
-
-Para agregar una pieza: copiar el `.glb` a la carpeta y sumarlo a `PIEZAS`.
-
-## Pendientes
-
-- [ ] Cargar los datos reales de las cinco piezas.
-- [ ] Revisar el peso de los modelos para equipos lentos (el cráneo es el más pesado).
-
-## Autor
-
-**Thiago Llovio Villarías** · Estudiante de 3.º año del Profesorado Universitario en Computación · UNLPam.
-Parte de mi [e-portfolio](https://villariasthiago.github.io/e-portfolio/).
