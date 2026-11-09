@@ -1,13 +1,33 @@
+<div align="center">
+
 # 🦴 Museo Virtual de Paleontología
 
-**Una sala de museo en 3D para recorrer desde el navegador, la tablet o el celular, con anteojos de cartón (Cardboard) si se tienen.**
-Recurso educativo de la cátedra *Informática Educativa II* · Profesorado Universitario en Computación · FCEyN · UNLPam.
+### Una sala de museo en 3D para recorrer desde el navegador, la tablet o el celular
 
-[![Abrir el museo](https://img.shields.io/badge/▶_Abrir_el_museo-e6c384?style=for-the-badge&labelColor=2a1f17)](https://villariasthiago.github.io/Museo-Virtual/)
+<br>
 
-👉 **https://villariasthiago.github.io/Museo-Virtual/**
+<a href="https://villariasthiago.github.io/Museo-Virtual/">
+  <img src="https://img.shields.io/badge/%E2%96%B6%20%20ABRIR%20EL%20MUSEO-Sala%203D%20%C2%B7%20Cardboard-e6c384?style=for-the-badge&labelColor=2a1f17" alt="Abrir el museo" height="56">
+</a>
+
+<br><br>
+
+🔗 **[villariasthiago.github.io/Museo-Virtual](https://villariasthiago.github.io/Museo-Virtual/)**
+
+**👆 Hacé click y recorré la sala, sin instalar nada 👆**
+
+<br>
+
+![piezas](https://img.shields.io/badge/piezas-5%20fósiles%203D-e6c384?style=flat-square&labelColor=2a1f17)
+![modo](https://img.shields.io/badge/modo-VR%20Cardboard-4a3a2b?style=flat-square)
+![hecho con](https://img.shields.io/badge/hecho%20con-A--Frame-f6efe0?style=flat-square&labelColor=2a1f17)
+![cátedra](https://img.shields.io/badge/cátedra-Informática%20Educativa%20II-cdbfa6?style=flat-square&labelColor=2a1f17)
+
+</div>
 
 ---
+
+Recurso educativo de la cátedra *Informática Educativa II* · Profesorado Universitario en Computación · FCEyN · UNLPam.
 
 ## ¿Qué es?
 
@@ -61,3 +81,15 @@ Museo-Virtual/
 ├── montsecosuchus.glb
 └── README.md
 ```
+
+---
+
+## 👋 Más proyectos
+
+<div align="center">
+
+<a href="https://villariasthiago.github.io/e-portfolio/#inicio">
+  <img src="https://img.shields.io/badge/%F0%9F%8C%90%20%20Mi%20portafolio-ver%20otros%20proyectos-46e3c9?style=for-the-badge&labelColor=8f7bff" alt="Mi portafolio">
+</a>
+
+</div>
